@@ -1,0 +1,62 @@
+{
+  "type": "slashblade:shaped_blade",
+  "blade": "silverstar:silver_star",
+  "category": "equipment",
+  "key": {
+    "A": {
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade:fox_white",
+        "kill": 2000
+      }
+    },
+    "B": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "C": {
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade:fox_black",
+        "kill": 2000
+      }
+    },
+    "D": {
+      "type": "forge:nbt",
+      "item": "minecraft:enchanted_book",
+      "nbt": "{StoredEnchantments:[{id:\"minecraft:vanishing_curse\",lvl:1s}]}"
+    },
+    "E": {
+      "item": "minecraft:iron_sword"
+    },
+    "F": {
+      "type": "forge:nbt",
+      "item": "minecraft:enchanted_book",
+      "nbt": "{StoredEnchantments:[{id:\"minecraft:binding_curse\",lvl:1s}]}"
+    },
+    "G": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "H": {
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade_addon:nihilbx",
+        "kill": 0
+      }
+    },
+    "I": {
+      "item": "minecraft:netherite_ingot"
+    }
+  },
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "result": {
+    "item": "slashblade:slashblade"
+  },
+  "show_notification": true
+}

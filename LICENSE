@@ -1,0 +1,33 @@
+MIT License
+
+Copyright (c) 2026 GoldenStar
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Third-party assets & code
+
+本模组的 Java 代码以 MIT 发布。美术资源与第三方内容的归属另见 README 的「授权与致谢」一节：
+
+- 刀模型引用自 SlashBlade: Resharped（美术资源归原作者），经拔刀剑制作团队授权修改后使用，
+  本模组的 jar 内不包含对方的模型文件，只在运行时引用。
+- 星域渲染算法与点阵字形表出自资源包《星空物品》（作者：猪猪三号，B 站 BV1834162fUW），
+  已获作者同意使用并标注来源。
+- 星域底图贴图的一部分来自 Re-Avaritia（MIT）。

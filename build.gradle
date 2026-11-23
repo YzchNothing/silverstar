@@ -1,0 +1,85 @@
+plugins {
+    // 钉选 6.0.54（MDK 写 [6.0,6.2)）；版本更新时同步 versions.js 矩阵。
+    id 'net.minecraftforge.gradle' version '6.0.54'
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+}
+
+// 版本号只在这里改一处；mods.toml 里的 ${mod_version} 也跟着变。
+version = "1.0.0"
+group = "com.goldenstar.silverstar"
+archivesBaseName = "silverstar"
+
+// 不用 java.toolchain 自动下载（本机离线；JDK 17 由 JAVA_HOME 提供）。
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
+
+minecraft {
+    mappings channel: mapping_channel, version: mapping_version
+    copyIdeResources = true
+    runs {
+        client {
+            workingDirectory project.file('run')
+        }
+        server {
+            workingDirectory project.file('run')
+        }
+        gameTestServer {
+            workingDirectory project.file('run')
+        }
+        data {
+            workingDirectory project.file('run')
+            args '--mod', mod_id, '--all'
+        }
+    }
+}
+
+repositories {
+    // 离线兜底：把 Gradle 缓存里缺 metadata 的传递依赖（java-objc-bridge 等）摆成本地 maven。
+    maven { url = uri('libs/maven') }
+    mavenCentral()
+}
+
+dependencies {
+    // [mc:dependencies]
+    minecraft "net.minecraftforge:forge:1.20.1-47.3.0"
+
+    // 前置（运行时硬依赖）：SlashBlade: Resharped 与 SJAP。
+    // 生产 jar 是 SRG 名，但附属自有成员名未混淆，编译期直接引用即可（不打包）。
+    compileOnly files('libs/slashblade-1.20.1-1.1.23.jar')
+    compileOnly files('libs/slashblade_addon-1.20.1-1.1.10.jar')
+}
+
+// mods.toml / pack.mcmeta 里的 ${mod_id} 等由 Gradle expand 替换（与 scaffold 的 {{}} 不冲突）。
+def replaceProperties = [
+    minecraft_version: "1.20.1", forge_version: "47.3.0",
+    minecraft_version_range: "[1.20.1,1.21)",
+    forge_version_range: "[47,)",
+    loader_version_range: "[47,)",
+    mod_id: "silverstar", mod_name: mod_name, mod_license: mod_license,
+    mod_version: mod_version, mod_authors: mod_authors, mod_description: mod_description,
+]
+
+processResources {
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) { expand replaceProperties }
+}
+
+jar {
+    manifest {
+        attributes([
+            "Specification-Title": mod_id,
+            "Implementation-Version": project.version,
+            // 刀光星空渲染的 mixin；Forge 从 jar manifest 读这个键。
+            "MixinConfigs": "silverstar.mixins.json",
+        ])
+    }
+    finalizedBy 'reobfJar'
+}

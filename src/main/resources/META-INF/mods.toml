@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+description="${mod_description}"
+# 模组列表里显示的图标，文件放在 jar 的根目录（src/main/resources/icon.png）。
+# 由 _材质/发布/make_icon_from_shot.py 由游戏截图生成。
+logoFile="icon.png"
+
+[[dependencies.${mod_id}]]
+modId="forge"
+versionRange="${forge_version_range}"
+mandatory=true
+
+[[dependencies.${mod_id}]]
+modId="minecraft"
+versionRange="${minecraft_version_range}"
+mandatory=true
+
+[[dependencies.${mod_id}]]
+modId="slashblade"
+# 本模组的渲染是靠 mixin 逐个对准拔刀剑 1.1.23 的方法签名做的，
+# 对方一旦改方法名/参数，注入就会失败并让游戏启动崩溃。
+# 所以这里只接受 1.1.23 起的 1.1.x，1.2 之后必须重新验证才能放宽。
+versionRange="[1.1.23,1.2)"
+mandatory=true
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="slashblade_addon"
+# 配方里需要一把 slashblade_addon:nihilbx，缺失时这把刀合不出来，所以保持硬依赖。
+# 版本同样收紧到验证过的 1.1.x。
+versionRange="[1.1.10,1.2)"
+mandatory=true
+ordering="AFTER"
+side="BOTH"

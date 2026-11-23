@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.goldenstar.silverstar.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "BladeRenderStateMixin",
+    "DriveRendererMixin",
+    "JudgementCutRendererMixin",
+    "LayerMainBladeMixin",
+    "SlashEffectRendererMixin",
+    "SummonedSwordRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

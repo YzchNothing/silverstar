@@ -1,0 +1,10 @@
+# 统一换行符：仓库里存 LF，Windows 检出时自动转成 CRLF。
+# 不写这个的话，git 每次都会弹一堆 "LF will be replaced by CRLF" 的警告。
+* text=auto eol=lf
+
+# 这些是二进制，别让 git 尝试做换行转换
+*.jar binary
+*.png binary
+*.ogg binary
+*.obj binary
+*.class binary
