@@ -15,7 +15,7 @@ authors="${mod_authors}"
 issueTrackerURL="https://github.com/YzchNothing/silverstar/issues"
 displayURL="https://github.com/YzchNothing/silverstar"
 # credits 只写"用了谁的什么"，不接受长篇大论，MOD 列表那一栏放不下。
-credits="Model: SlashBlade official sange.obj, used with permission from the SlashBlade team. Cosmic shader: based on the resource pack 'Star Item' by 猪猪三号, used with permission. Reference: Re-Avaritia (MIT)."
+credits="Model: SlashBlade official sange.obj, used with permission from the SlashBlade team. Cosmic shader: based on the resource pack 'Star Item' by 洛谔谔, used with permission. Reference: Re-Avaritia (MIT)."
 
 [[dependencies.${mod_id}]]
 modId="forge"

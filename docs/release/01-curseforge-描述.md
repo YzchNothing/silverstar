@@ -68,7 +68,7 @@ For Minecraft **1.20.1 / Forge**，需要 **SlashBlade: Resharped**。
 ### 授权
 
 - 刀模型引用自 SlashBlade，**经拔刀剑制作团队授权**修改后使用，本 mod 的 jar 内不含对方的美术文件
-- 星域渲染算法出自资源包「星空物品」（作者 猪猪三号，B 站 `BV1834162fUW`），**已获作者授权**
+- 星域渲染算法出自资源包「星空物品」（作者 洛谔谔，B 站 `BV1834162fUW`），**已获作者授权**
 - 部分星图贴图来自 Re-Avaritia（MIT）
 - 其余代码 MIT
 
@@ -133,6 +133,6 @@ Netherite Ingot          Nihilbx (0 kills) Netherite Ingot
 ### Credits & permissions
 
 - Blade model referenced from SlashBlade, modified **with permission from the SlashBlade team**; no third-party art is bundled in this jar
-- Cosmic shader algorithm from the resource pack 「星空物品」 by 猪猪三号 (bilibili `BV1834162fUW`), **used with the author's permission**
+- Cosmic shader algorithm from the resource pack 「星空物品」 by 洛谔谔 (bilibili `BV1834162fUW`), **used with the author's permission**
 - Some star textures from Re-Avaritia (MIT)
 - All other code MIT
