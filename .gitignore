@@ -49,3 +49,6 @@ docs/release/icon_from_shot_*.png
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 开发笔记（本地，不发布）
+docs/开发笔记.md
