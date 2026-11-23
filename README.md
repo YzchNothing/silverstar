@@ -7,7 +7,7 @@ Minecraft **1.20.1 · Forge** 的拔刀剑（SlashBlade: Resharped）附属 mod�
 
 - 前置：SlashBlade: Resharped `1.1.23` ~ `1.1.x`、SlashBlade Addon (SJAP) `1.1.10` ~ `1.1.x`
 - 作者：GoldenStar ｜ 版本：1.0.0 ｜ 许可证：MIT
-- 下载：见 [Releases](../../releases)
+- 下载：[GitHub Releases](https://github.com/YzchNothing/silverstar/releases)
 
 ## 授权与致谢
 

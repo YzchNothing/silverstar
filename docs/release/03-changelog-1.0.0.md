@@ -1,3 +1,59 @@
+## SilverStar (English)
+
+A SlashBlade addon that welds a night sky onto a katana.
+
+Minecraft **1.20.1 / Forge**, requires **SlashBlade: Resharped**.
+
+### The blade
+
+**SilverStar**: 75 base damage, 75 durability, built-in Power 20 / Unbreaking 3 / Sharpness 10.
+
+The edge is not a texture but a slowly drifting star field; slash arcs, phantom swords, Judgement Cut ribbons and wave slashes all share it — every swing throws off a piece of the night sky.
+
+Want the handle and scabbard cosmic too? Set `bladeStarRender` in `config/silverstar-client.toml`; it applies instantly.
+
+### Slash Art: Paradise Falls
+
+Charge, then drop Judgement Cuts on every enemy within 9 blocks (and slow them); afterwards teleport above (or behind) the lowest-health target and follow up with Aerial Cleave (or Void Slash).
+
+### Special Effect: One Left (level 50+)
+
+- Every 300 kills adds 15% of the hit as a second strike, no cap
+- The second strike is half magic, half dragon's breath; neither is reduced by armor
+- Every 3rd swing, the 4th hit doubles both the main hit and the second strike
+
+### Special Effect: Star Eclipse (level 20+)
+
+- Hits apply "star scars", up to 5, +4% attack damage each
+- The 5th hit detonates for `max(15% of max health, your attack damage)`
+- A scarred target's death explodes within 4 blocks and spreads scars to nearby enemies
+
+### Recipe
+
+```
+Fox White (2000 kills)   Netherite Ingot   Fox Black (2000 kills)
+Book of Vanishing        Iron Sword        Book of Binding
+Netherite Ingot          Nihilbx (0 kills) Netherite Ingot
+```
+
+### Requirements
+
+| Requires | Version |
+|---|---|
+| Minecraft | 1.20.1 |
+| Forge | 47.x |
+| SlashBlade: Resharped | 1.1.23 ~ 1.1.x |
+| SJAP | 1.1.10 ~ 1.1.x |
+
+Versions are pinned: the renderer is injected via mixins against 1.1.23 signatures. With an Iris/Oculus pack the cosmic layers fall back to vanilla materials.
+
+### Credits
+
+- Blade model from SlashBlade, modified **with the team's permission**; no third-party art is bundled
+- Cosmic algorithm from the resource pack 「星空物品」 by 洛谔谔 (bilibili `BV1834162fUW`), **used with permission**
+- Some star textures from Re-Avaritia (MIT)
+
+
 # 1.0.0 — 首个正式版
 
 Minecraft 1.20.1 / Forge 47。
