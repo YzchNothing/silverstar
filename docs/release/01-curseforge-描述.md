@@ -21,19 +21,19 @@ Minecraft **1.20.1 / Forge**，需要 **SlashBlade: Resharped**。
 
 ### 刀技：天堂陨落
 
-蓄力后释放，对半径 9 格内目标释放次元斩，随后瞬移到血量最低目标上方（或后方），释放空坠斩（或虚无刀界）。
+蓄力后释放，对半径 9 格内目标释放次元斩并施加缓慢，随后瞬移到血量最低目标上方（或后方），释放空坠斩（或虚无刀界）。
 
-### 特殊效果：唯余其一
+### 特殊效果：唯余其一（需 50 级）
 
-- 周围每多一个敌人，第二段伤害 +15%，最多 +90%
-- 每次击杀攒一层「裁定」，每层 +2%
-- 攒到 20 层进入「终局」，10 秒内必暴
+- 每 300 击杀，命中追加 15% 第二段伤害，无上限
+- 第二段一半魔法一半龙息，都不吃护甲
+- 每挥 3 刀，第 4 刀本体与第二段一起翻倍
 
-### 特殊效果：星蚀
+### 特殊效果：星蚀（需 20 级）
 
-- 命中叠「星痕」，最多 5 层，每层 +4%
-- 第 5 层引爆：`max(目标血上限 15%, 面板攻击力)`
-- 带痕目标死亡时爆炸并传染星痕
+- 命中叠「星痕」，最多 5 层，每层 +4% 攻击力
+- 第 5 次命中引爆：`max(目标血上限 15%, 面板攻击力)`
+- 带痕目标死亡时按层数在 4 格内爆炸，并把星痕传染给周围的敌人
 
 ### 合成
 
@@ -54,7 +54,7 @@ Minecraft **1.20.1 / Forge**，需要 **SlashBlade: Resharped**。
 | SlashBlade: Resharped | 1.1.23 ~ 1.1.x |
 | SJAP | 1.1.10 ~ 1.1.x |
 
-版本范围锁死：渲染靠 mixin 对准 1.1.23 的签名。光影（Oculus / Iris）下星空层让位原版材质，关光影即恢复。
+版本范围锁死：渲染靠 mixin 对准 1.1.23 的签名。
 
 ### 授权
 
@@ -81,19 +81,19 @@ Want the handle and scabbard cosmic too? Set `bladeStarRender` in `config/silver
 
 ### Slash Art: Paradise Falls
 
-Charge, then drop Judgement Cuts on every enemy within 9 blocks; afterwards teleport above (or behind) the lowest-health target and follow up with Aerial Cleave (or Void Slash).
+Charge, then drop Judgement Cuts on every enemy within 9 blocks (and slow them); afterwards teleport above (or behind) the lowest-health target and follow up with Aerial Cleave (or Void Slash).
 
-### Special Effect: One Left
+### Special Effect: One Left (level 50+)
 
-- +15% second-hit damage per nearby enemy, capped at +90%
-- Each kill adds one "verdict" stack, +2% each
-- 20 stacks trigger "terminal": guaranteed crits for 10 seconds
+- Every 300 kills adds 15% of the hit as a second strike, no cap
+- The second strike is half magic, half dragon's breath; neither is reduced by armor
+- Every 3rd swing, the 4th hit doubles both the main hit and the second strike
 
-### Special Effect: Star Eclipse
+### Special Effect: Star Eclipse (level 20+)
 
-- Hits apply "star scars", up to 5, +4% each
-- The 5th scar detonates for `max(15% of max health, your attack damage)`
-- A scarred target's death explodes and spreads scars
+- Hits apply "star scars", up to 5, +4% attack damage each
+- The 5th hit detonates for `max(15% of max health, your attack damage)`
+- A scarred target's death explodes within 4 blocks and spreads scars to nearby enemies
 
 ### Recipe
 
