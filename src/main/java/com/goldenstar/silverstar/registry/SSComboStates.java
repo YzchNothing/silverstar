@@ -39,16 +39,6 @@ public final class SSComboStates {
                     .nextOfTimeout(entity -> ComboStateRegistry.NONE.getId())
                     .build());
 
-    /** 收尾状态：动作放完停一下再回到待机，避免和下一刀的输入打架。 */
-    public static final RegistryObject<ComboState> PARADISE_FALLS_END = COMBO_STATES.register("paradise_falls_end",
-            () -> ComboState.Builder.newInstance()
-                    .startAndEnd(0, 5)
-                    .speed(1.0f)
-                    .timeout(600)
-                    .next(entity -> ComboStateRegistry.STANDBY.getId())
-                    .nextOfTimeout(entity -> ComboStateRegistry.NONE.getId())
-                    .build());
-
     private SSComboStates() {
     }
 }

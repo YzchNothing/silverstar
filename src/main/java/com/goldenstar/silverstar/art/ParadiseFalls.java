@@ -65,7 +65,7 @@ public final class ParadiseFalls {
         ItemStack blade = user.getMainHandItem();
 
         // 必须用四参重载：三参重载内部会把距离限制在 getResolvedReach(user)（约 4 格），
-        // 6 格的范围会被它裁掉。
+        // 9 格的范围会被它裁掉。
         List<Entity> targets = TargetSelector.getTargettableEntitiesWithinAABB(
                 level, user, user.getBoundingBox().inflate(RANGE), RANGE);
 
