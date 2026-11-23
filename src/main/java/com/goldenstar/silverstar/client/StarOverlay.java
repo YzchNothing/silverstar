@@ -406,6 +406,12 @@ public final class StarOverlay {
         }
         // 开关只管"整把刀"，刀刃永远走下面的两遍绘制，所以这把刀的任何状态都能看到星空刃。
         boolean whole = SSConfig.bladeStarRender();
+        if (shaderPackActive()) {
+            // 光影下 Iris 接管核心着色器，我们的 cosmic 程序不会被调用，第二遍等于没画。
+            // 这时候如果还拦下来，第一遍用的是"刀刃被挖空"的 body 贴图，刀刃就直接变成空气。
+            // 所以光影下一律不拦，交回原版用完整贴图——那张贴图的刀刃条里烤了星空，静态但有图。
+            return false;
+        }
         if (!whole && !isBodyGroup(target)) {
             // 关着开关时刀鞘保持原版：不拦，交给原渲染。
             return false;

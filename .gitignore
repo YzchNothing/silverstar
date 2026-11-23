@@ -38,6 +38,13 @@ _材质/**/__pycache__/
 docs/授权-*.png
 docs/授权-*.jpg
 
+# ---- 发布用截图 ----
+# 游戏里截的图只上传到 CurseForge / MC百科 的页面，不进仓库：
+# 体积大，而且其中几张带存档地形与玩家信息。
+docs/release/shots/
+docs/release/screenshot.png
+docs/release/icon_from_shot_*.png
+
 # ---- 系统垃圾 ----
 Thumbs.db
 desktop.ini
