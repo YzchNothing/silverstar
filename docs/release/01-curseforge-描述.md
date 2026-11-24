@@ -7,7 +7,7 @@
 
 ## 纯银星 · SilverStar
 
-拔刀剑附属，把星空焊在刀身上。
+拔刀剑附属，采用**无尽贪婪（寰宇支配之剑）风格的星空渲染**——把星空焊在刀身上。
 
 Minecraft **1.20.1 / Forge**，需要 **SlashBlade: Resharped**。
 
@@ -15,7 +15,7 @@ Minecraft **1.20.1 / Forge**，需要 **SlashBlade: Resharped**。
 
 **纯银星**：基础伤害 75、耐久 75，自带 力量 20 / 耐久 3 / 锋利 10。
 
-刀刃不是贴图，是一片缓慢漂移的星域；刀光、幻影剑、次元斩的风纹、斩击波都用同一套星空——每一刀甩出去的都是夜空。
+刀刃不是贴图，而是**无尽贪婪（寰宇支配之剑）风格的星空渲染**：一片缓慢漂移的星域；刀光、幻影剑、次元斩的风纹、斩击波都用同一套星空——每一刀甩出去的都是夜空。
 
 想让刀柄、刀鞘也变成星域，把 `config/silverstar-client.toml` 里的 `bladeStarRender` 打开即可，改完立刻生效。
 
@@ -67,7 +67,7 @@ Minecraft **1.20.1 / Forge**，需要 **SlashBlade: Resharped**。
 
 ## SilverStar (English)
 
-A SlashBlade addon that welds a night sky onto a katana.
+A SlashBlade addon with **Avaritia-style star rendering** (the Sword of the Cosmos look) — a night sky welded onto a katana.
 
 Minecraft **1.20.1 / Forge**, requires **SlashBlade: Resharped**.
 
@@ -75,7 +75,7 @@ Minecraft **1.20.1 / Forge**, requires **SlashBlade: Resharped**.
 
 **SilverStar**: 75 base damage, 75 durability, built-in Power 20 / Unbreaking 3 / Sharpness 10.
 
-The edge is not a texture but a slowly drifting star field; slash arcs, phantom swords, Judgement Cut ribbons and wave slashes all share it — every swing throws off a piece of the night sky.
+The edge is not a texture but a slowly drifting star field, rendered in the **Avaritia (Sword of the Cosmos) style**; slash arcs, phantom swords, Judgement Cut ribbons and wave slashes all share it — every swing throws off a piece of the night sky.
 
 Want the handle and scabbard cosmic too? Set `bladeStarRender` in `config/silverstar-client.toml`; it applies instantly.
 
