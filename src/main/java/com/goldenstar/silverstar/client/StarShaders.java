@@ -46,6 +46,15 @@ public final class StarShaders {
     private static final ResourceLocation ID_COSMIC_PHANTOM =
             new ResourceLocation(Silverstar.MODID, "cosmic_phantom");
     /**
+     * 「金色星」的幻影剑：和 {@link #ID_COSMIC_PHANTOM} 同一套参数，
+     * 片元换成金色那份的稀疏版（{@code silverstar:cosmic_gold_sparse}）。
+     *
+     * <p>不共用的理由和刀光、风纹一样：{@code tint} 是程序级默认值，
+     * 共用会把纯银星那批深紫幻影剑也一起染成金色。</p>
+     */
+    private static final ResourceLocation ID_COSMIC_PHANTOM_GOLD =
+            new ResourceLocation(Silverstar.MODID, "cosmic_phantom_gold");
+    /**
      * 次元斩外圈那五道风纹：和刀光同一套 cosmic，但每一道的颜色、透明度都不一样，
      * 所以单独一份程序，好在每次绘制前把自己那一道的色调塞进去。
      */
@@ -67,6 +76,9 @@ public final class StarShaders {
      */
     private static final ResourceLocation ID_COSMIC_WAVE =
             new ResourceLocation(Silverstar.MODID, "cosmic_wave");
+    /** 「金色星」的斩击波：和 {@link #ID_COSMIC_WAVE} 同一套参数，片元换成金色那份的 star-only 版。 */
+    private static final ResourceLocation ID_COSMIC_WAVE_GOLD =
+            new ResourceLocation(Silverstar.MODID, "cosmic_wave_gold");
     /**
      * 左臂星空用的那一份：和刀身同一套算法，但透明度只由遮罩贴图的 alpha 决定，
      * 所以单独开一份程序，免得别人改 {@code opacity} 时把手臂一起改掉。
@@ -93,9 +105,11 @@ public final class StarShaders {
     private static ShaderInstance cosmicArcBlue;
     private static ShaderInstance cosmicLockon;
     private static ShaderInstance cosmicPhantom;
+    private static ShaderInstance cosmicPhantomGold;
     private static ShaderInstance cosmicWind;
     private static ShaderInstance cosmicWindGold;
     private static ShaderInstance cosmicWave;
+    private static ShaderInstance cosmicWaveGold;
     private static ShaderInstance cosmicArm;
     private static ShaderInstance cosmicArmGold;
     private static ShaderInstance cosmicGold;
@@ -136,6 +150,11 @@ public final class StarShaders {
         return cosmicPhantom;
     }
 
+    /** 「金色星」的幻影剑：同样稀疏，但是金色。 */
+    public static ShaderInstance cosmicPhantomGold() {
+        return cosmicPhantomGold;
+    }
+
     /** 次元斩风纹用的 cosmic。 */
     public static ShaderInstance cosmicWind() {
         return cosmicWind;
@@ -149,6 +168,11 @@ public final class StarShaders {
     /** 斩击波（波刀龙胆这类 drive 招式）用的 cosmic。 */
     public static ShaderInstance cosmicWave() {
         return cosmicWave;
+    }
+
+    /** 「金色星」的斩击波。 */
+    public static ShaderInstance cosmicWaveGold() {
+        return cosmicWaveGold;
     }
 
     /** 左臂星空用的 cosmic。 */
@@ -181,8 +205,12 @@ public final class StarShaders {
         // 不透明度额外给一档增益：加法混合下它本来偏透，乘一下看着才像实体剑，
         // 淡入也在一帧内到位，不会有一段“很淡”的过渡。
         apply(cosmicPhantom, time, Math.min(1.0F, opacity * PHANTOM_OPACITY_GAIN), 1.45F);
+        // 「金色星」的幻影剑：参数和上面完全一样，只换了一份金色片元。
+        apply(cosmicPhantomGold, time, Math.min(1.0F, opacity * PHANTOM_OPACITY_GAIN), 1.45F);
         apply(cosmicWind, time, opacity, 1.15F);
         apply(cosmicWave, time, opacity, 1.15F);
+        // 「金色星」的斩击波：同样一层、同样亮度，只是片元是金色。
+        apply(cosmicWaveGold, time, opacity, 1.15F);
         // 「金色星」的刀光。和 arc 分开一份，理由同刀身：程序级 tint 是共享状态，
         // 共用的话纯银星的刀光也会被染成金色。
         apply(cosmicArcGold, time, opacity, 1.15F);
@@ -314,8 +342,10 @@ public final class StarShaders {
         register(event, ID_COSMIC_ARC_BLUE, shader -> cosmicArcBlue = shader);
         register(event, ID_COSMIC_LOCKON, shader -> cosmicLockon = shader);
         register(event, ID_COSMIC_PHANTOM, shader -> cosmicPhantom = shader);
+        register(event, ID_COSMIC_PHANTOM_GOLD, shader -> cosmicPhantomGold = shader);
         register(event, ID_COSMIC_WIND, shader -> cosmicWind = shader);
         register(event, ID_COSMIC_WAVE, shader -> cosmicWave = shader);
+        register(event, ID_COSMIC_WAVE_GOLD, shader -> cosmicWaveGold = shader);
         register(event, ID_COSMIC_ARM, shader -> cosmicArm = shader);
         register(event, ID_COSMIC_ARM_GOLD, shader -> cosmicArmGold = shader);
         register(event, ID_COSMIC_GOLD, shader -> cosmicGold = shader);

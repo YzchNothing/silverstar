@@ -97,6 +97,12 @@ public final class StarRenderTypes {
                 StarShaders::cosmicPhantom, sheet));
     }
 
+    /** 「金色星」的幻影剑：同样稀疏，片元换成金色那份。缓存键单独一份，别和纯银星混。 */
+    public static RenderType cosmicPhantomGold(ResourceLocation sheet) {
+        return CACHE.computeIfAbsent("cpg@" + sheet, key -> createCosmicArc("cosmic_phantom_gold",
+                StarShaders::cosmicPhantomGold, sheet));
+    }
+
     /** 次元斩外圈的风纹：跟刀光同一套 cosmic，色调由 {@code StarShaders.updateWind} 每次单独塞。 */
     public static RenderType cosmicWind(ResourceLocation sheet) {
         return CACHE.computeIfAbsent("cw@" + sheet, key -> createCosmicArc("cosmic_wind",
@@ -113,6 +119,12 @@ public final class StarRenderTypes {
     public static RenderType cosmicWave(ResourceLocation sheet) {
         return CACHE.computeIfAbsent("cwv@" + sheet, key -> createCosmicArc("cosmic_wave",
                 StarShaders::cosmicWave, sheet));
+    }
+
+    /** 「金色星」的斩击波：参数一样，片元是金色那份。缓存键单独一份。 */
+    public static RenderType cosmicWaveGold(ResourceLocation sheet) {
+        return CACHE.computeIfAbsent("cwvg@" + sheet, key -> createCosmicArc("cosmic_wave_gold",
+                StarShaders::cosmicWaveGold, sheet));
     }
 
     /**

@@ -276,9 +276,12 @@ public final class StarOverlay {
         if (!(entity instanceof EntityAbstractSummonedSword sword) || !isStarry(sword)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
+            GOLD_SLASH.set(Boolean.FALSE);
             return;
         }
         STARRY.set(Boolean.TRUE);
+        // 金色星放的幻影剑走金色那一份程序（标记由 isStarry 在首次查询时写入）。
+        GOLD_SLASH.set(sword.getPersistentData().getBoolean(GOLD_TAG));
         // 不透明度恒为 1：着色器上的不透明度是全局参数，顶点攒成一批一起提交，
         // 新剑要是从 0 淡入，那个低值会把同批里所有还活着的剑一起压暗，看着就是"一起闪一下"。
         FADE.set(1.0F);
@@ -310,9 +313,12 @@ public final class StarOverlay {
         if (!(entity instanceof EntityDrive drive) || !isStarry(drive)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
+            GOLD_SLASH.set(Boolean.FALSE);
             return;
         }
         STARRY.set(Boolean.TRUE);
+        // 金色星放的斩击波走金色那一份程序（标记由 isStarry 在首次查询时写入）。
+        GOLD_SLASH.set(drive.getPersistentData().getBoolean(GOLD_TAG));
         float lifetime = Math.max(1.0F, drive.getLifetime());
         float progress = Math.min(lifetime, drive.tickCount + partialTicks) / lifetime;
         float t = Math.min(1.0F, (1.0F - progress) / 0.5F);
@@ -348,11 +354,12 @@ public final class StarOverlay {
         drawWith(stack, model, group, texture, pose, buffers, light, type);
     }
 
-    /** 幻影剑：整把剑都在发光，星点稀疏一些，染成深紫。 */
+    /** 幻影剑：整把剑都在发光，星点稀疏一些；纯银星是深紫，金色星是金色。 */
     public static void drawSword(ItemStack stack, WavefrontObject model, String group, ResourceLocation texture,
                                  PoseStack pose, MultiBufferSource buffers, int light) {
         drawWith(stack, model, group, texture, pose, buffers, light,
-                StarRenderTypes.cosmicPhantom(texture));
+                GOLD_SLASH.get() ? StarRenderTypes.cosmicPhantomGold(texture)
+                        : StarRenderTypes.cosmicPhantom(texture));
     }
 
     /**
@@ -364,7 +371,8 @@ public final class StarOverlay {
     public static void drawWave(ItemStack stack, WavefrontObject model, String group, ResourceLocation texture,
                                 PoseStack pose, MultiBufferSource buffers, int light) {
         drawWith(stack, model, group, texture, pose, buffers, light,
-                StarRenderTypes.cosmicWave(texture));
+                GOLD_SLASH.get() ? StarRenderTypes.cosmicWaveGold(texture)
+                        : StarRenderTypes.cosmicWave(texture));
     }
 
     /** 次元斩的球：原版贴图是纯白，形状完全靠模型几何——这颗球已经退回原版，这里保留给以后备用。 */
