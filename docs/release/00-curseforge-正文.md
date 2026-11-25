@@ -1,115 +1,39 @@
-# SilverStar
+# CurseForge Description（合规短版 v2）
 
-A SlashBlade: Resharped addon — a katana with **Avaritia-style star rendering** (the Sword of the Cosmos look): its blade, slashes and phantom swords are all a drifting star field.
-
-Minecraft **1.20.1 / Forge**, requires **SlashBlade: Resharped**.
-
-### The blade
-
-**SilverStar**: 75 base damage, 75 durability, built-in Power 20 / Unbreaking 3 / Sharpness 10.
-
-The edge is not a texture but a slowly drifting star field, rendered in the **Avaritia (Sword of the Cosmos) style**; slash arcs, phantom swords, Judgement Cut ribbons and wave slashes all share it — every swing throws off a piece of the night sky.
-
-Want the handle and scabbard cosmic too? Set `bladeStarRender` in `config/silverstar-client.toml`; it applies instantly.
-
-### Slash Art: Paradise Falls
-
-Charge, then drop Judgement Cuts on every enemy within 9 blocks (and slow them); afterwards teleport above (or behind) the lowest-health target and follow up with Aerial Cleave (or Void Slash).
-
-### Special Effect: One Left (level 50+)
-
-- Every 300 kills adds 15% of the hit as a second strike, no cap
-- The second strike is half magic, half dragon's breath; neither is reduced by armor
-- Every 3rd swing, the 4th hit doubles both the main hit and the second strike
-
-### Special Effect: Star Eclipse (level 20+)
-
-- Hits apply "star scars", up to 5, +4% attack damage each
-- The 5th hit detonates for `max(15% of max health, your attack damage)`
-- A scarred target's death explodes within 4 blocks and spreads scars to nearby enemies
-
-### Recipe
-
-```
-Fox White (2000 kills)   Netherite Ingot   Fox Black (2000 kills)
-Book of Vanishing        Iron Sword        Book of Binding
-Netherite Ingot          Nihilbx (0 kills) Netherite Ingot
-```
-
-### Requirements
-
-| Requires | Version |
-|---|---|
-| Minecraft | 1.20.1 |
-| Forge | 47.x |
-| SlashBlade: Resharped | 1.1.23 ~ 1.1.x |
-| SJAP | 1.1.10 ~ 1.1.x |
-
-Versions are pinned: the renderer is injected via mixins against 1.1.23 signatures.
-
-### Credits
-
-- Blade model from SlashBlade, modified **with the team's permission**; no third-party art is bundled
-- Cosmic algorithm from the resource pack 「星空物品」 by 洛谔谔 (bilibili `BV1834162fUW`), **used with permission**
-- Some star textures from Re-Avaritia (MIT)
-- All other code MIT
+> 用法：整段粘进 CurseForge 的 Description。英文为主，中文附在最后。
+> 这一版专门针对审核那句"衍生作品需注明出处、附原始内容链接、说明与原作的区别"。
 
 ---
 
-# 纯银星 · SilverStar
+SilverStar is an addon for **SlashBlade: Resharped**. It adds two katanas — 纯银星 (75 damage) with its sword art, and 金色星 (70 damage) with its sword art — four sword effects, one recipe each, and a star-field render layer over blades, slash arcs, phantom swords and judgement-cut rings.
 
-拔刀剑附属，采用**无尽贪婪（寰宇支配之剑）风格的星空渲染**——把星空焊在刀身上。
+**Requires:** Minecraft 1.20.1, Forge 47.x, [SlashBlade: Resharped](https://github.com/0999312/SlashBlade_Resharped) 1.1.23+, [SlashBlade: Japanese Addon Pack](https://github.com/0999312/SlashBlade-Japanese-Addon-Pack-Reshaped) 1.1.10+, [RenderBlender](https://github.com/Nova-Committee/RenderBlender).
 
-Minecraft **1.20.1 / Forge**，需要 **SlashBlade: Resharped**。
+**Team:** GoldenStar — code and art. YzchNothing (纯银星) — project owner.
 
-### 这把刀
+Configurable in `config/silverstar-client.toml`: `bladeStarRender` (handle and scabbard cosmic too) and the left-arm star shell (`armRenderMode`, `armColorMode`).
 
-**纯银星**：基础伤害 75、耐久 75，自带 力量 20 / 耐久 3 / 锋利 10。
+## Derivative work
 
-刀刃不是贴图，而是**无尽贪婪（寰宇支配之剑）风格的星空渲染**：一片缓慢漂移的星域；刀光、幻影剑、次元斩的风纹、斩击波都用同一套星空——每一刀甩出去的都是夜空。
+This is an addon for **SlashBlade: Resharped** ([GitHub](https://github.com/0999312/SlashBlade_Resharped), MIT). It only adds content on top of the original mod: two blades, two sword arts, four sword effects, two recipes and a client-side render layer. It does not modify the original mod's files, does not redistribute the original mod, and does not change any existing weapon.
 
-想让刀柄、刀鞘也变成星域，把 `config/silverstar-client.toml` 里的 `bladeStarRender` 打开即可，改完立刻生效。
+## Assets and credits
 
-### 刀技：天堂陨落
+- Blade model: SlashBlade's own model, referenced at runtime from the installed mod — not bundled. Used with the SlashBlade team's permission.
+- Star algorithm: adapted from the resource pack 「星空物品」 by 洛谔谔 ([bilibili BV1834162fUW](https://www.bilibili.com/video/BV1834162fUW)), used with the author's permission.
+- Some star textures: [Re-Avaritia](https://github.com/Nova-Committee/Re-Avaritia) (MIT).
+- Source: https://github.com/YzchNothing/silverstar — MIT.
 
-蓄力后释放，对半径 9 格内目标释放次元斩并施加缓慢，随后瞬移到血量最低目标上方（或后方），释放空坠斩（或虚无刀界）。
+---
 
-### 特殊效果：唯余其一（需 50 级）
+纯银星是**拔刀剑：重锋**的附属，新增两把太刀（纯银星 伤害 75、金色星 伤害 70）、两个剑技、四个剑技效果；刀身、刀光与左臂都是流动星空。
 
-- 每 300 击杀，命中追加 15% 第二段伤害，无上限
-- 第二段一半魔法一半龙息，都不吃护甲
-- 每挥 3 刀，第 4 刀本体与第二段一起翻倍
+**需要**：Minecraft 1.20.1、Forge 47.x、[拔刀剑：重锋](https://github.com/0999312/SlashBlade_Resharped) 1.1.23+、[拔刀剑日系附属包](https://github.com/0999312/SlashBlade-Japanese-Addon-Pack-Reshaped) 1.1.10+、[RenderBlender](https://github.com/Nova-Committee/RenderBlender)。
 
-### 特殊效果：星蚀（需 20 级）
+**制作**：GoldenStar — 程序与美术；纯银星（YzchNothing）— 项目所有者。
 
-- 命中叠「星痕」，最多 5 层，每层 +4% 攻击力
-- 第 5 次命中引爆：`max(目标血上限 15%, 面板攻击力)`
-- 带痕目标死亡时按层数在 4 格内爆炸，并把星痕传染给周围的敌人
+可配置项在 `config/silverstar-client.toml`：`bladeStarRender`（刀柄刀鞘也铺星空）、`armRenderMode` / `armColorMode`（左臂星空）。
 
-### 合成
+**衍生作品说明**：本模组是拔刀剑：重锋（MIT）的附属，只在原作之上追加内容——两把刀、两个剑技、四个剑技效果、两条配方、一层客户端渲染；不修改原作文件、不重新分发原作、不改动任何原有武器。
 
-```
-白狐(2000 杀)   下界合金锭   黑狐(2000 杀)
-消失诅咒附魔书    铁剑      绑定诅咒附魔书
-下界合金锭      死念(0 杀)  下界合金锭
-```
-
-白狐 / 黑狐 = `slashblade:fox_white` / `fox_black`（各需 2000 击杀）；死念 = `slashblade_addon:nihilbx`；两本书为消失诅咒与绑定诅咒。
-
-### 前置
-
-| 需要 | 版本 |
-|---|---|
-| Minecraft | 1.20.1 |
-| Forge | 47.x |
-| SlashBlade: Resharped | 1.1.23 ~ 1.1.x |
-| SJAP | 1.1.10 ~ 1.1.x |
-
-版本范围锁死：渲染靠 mixin 对准 1.1.23 的签名。
-
-### 授权
-
-- 刀模型引自 SlashBlade，**经制作团队授权**修改；jar 内不含对方美术文件
-- 星域算法出自资源包「星空物品」（洛谔谔，B 站 `BV1834162fUW`），**已获授权**
-- 部分星图贴图来自 Re-Avaritia（MIT）
-- 其余代码 MIT
+**素材与出处**：刀模型引用拔刀剑自带模型（运行时引用，未打包，已获团队许可）；星空算法改编自资源包「星空物品」（[洛谔谔，B 站 BV1834162fUW](https://www.bilibili.com/video/BV1834162fUW)，已获许可）；部分星点贴图来自 [Re-Avaritia](https://github.com/Nova-Committee/Re-Avaritia)（MIT）；源码 https://github.com/YzchNothing/silverstar ，MIT。

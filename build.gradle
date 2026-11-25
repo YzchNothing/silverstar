@@ -7,7 +7,7 @@ plugins {
 }
 
 // 版本号只在这里改一处；mods.toml 里的 ${mod_version} 也跟着变。
-version = "1.0.0"
+version = "1.1.0"
 group = "com.goldenstar.silverstar"
 archivesBaseName = "silverstar"
 
@@ -56,6 +56,8 @@ dependencies {
     // 生产 jar 是 SRG 名，但附属自有成员名未混淆，编译期直接引用即可（不打包）。
     compileOnly files('libs/slashblade-1.20.1-1.1.23.jar')
     compileOnly files('libs/slashblade_addon-1.20.1-1.1.10.jar')
+    // 可选前置：只有它才能播人体动作（VmdAnimation 的父接口来自这里）。不在运行时硬依赖。
+    compileOnly files('libs/player-animation-lib-forge-1.0.2-rc1+1.20.jar')
 }
 
 // mods.toml / pack.mcmeta 里的 ${mod_id} 等由 Gradle expand 替换（与 scaffold 的 {{}} 不冲突）。

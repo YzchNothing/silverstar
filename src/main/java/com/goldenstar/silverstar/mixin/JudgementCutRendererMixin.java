@@ -44,15 +44,23 @@ public abstract class JudgementCutRendererMixin {
     private static final String SET_COL_COLOR = SSDescriptors.SET_COL_COLOR;
 
     /**
-     * 开光影时球保留原版几何，颜色换成青色（跟刀光同色）。
-     * alpha 原样带着走，它是每一档的亮度。
+     * 球（和那圈扁平光晕）的颜色。
+     *
+     * <p>原版这两颗是「空间被切开的洞」：走反色那条路，颜色越深反色后越亮，所以刀色是什么它就不像什么。
+     * 我们现在按刀给一个颜色：纯银星青、金色星金。因为这条路会反色，传进去的是目标色的反相，
+     * 反色之后正好变回要的颜色。</p>
+     *
+     * <p>不装光影时球仍然反色，只是换了个色相，所以“洞”的观感还在。</p>
      */
     @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE", target = SET_COL_INT))
     private void silverstar$setSphereCol(int argb) {
-        if (StarOverlay.vanillaLook()) {
-            BladeRenderState.setCol(StarOverlay.recolour(argb, StarOverlay.CYAN));
-        } else {
+        int target = StarOverlay.dimSphereColour();
+        if (target < 0) {
             BladeRenderState.setCol(argb);
+        } else {
+            // 只换色相，alpha 还是原版给的那一档亮度。
+            int alpha = argb & 0xFF000000;
+            BladeRenderState.setCol(alpha | (target & 0xFFFFFF));
         }
     }
 

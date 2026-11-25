@@ -1,7 +1,12 @@
-{
+﻿{
   "item.silverstar.silver_star": "Silver Star",
   "item.silverstar.silver_star.desc": "A silver blade that catches the light of the stars.",
+  "item.silverstar.test_annihilation": "Annihilation (Test Blade)",
   "slash_art.silverstar.paradise_falls": "Paradise Falls",
   "se.silverstar.one_left": "One Left",
-  "se.silverstar.star_eclipse": "Star Eclipse"
+  "se.silverstar.star_eclipse": "Star Eclipse",
+  "item.silverstar.golden_star": "GoldenStar",
+  "slash_art.silverstar.ember": "Ember",
+  "se.silverstar.afterglow": "Afterglow",
+  "se.silverstar.gold_shards": "Gold Shards"
 }

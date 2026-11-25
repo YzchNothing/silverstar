@@ -1,7 +1,9 @@
 package com.goldenstar.silverstar.registry;
 
 import com.goldenstar.silverstar.Silverstar;
+import com.goldenstar.silverstar.art.Ember;
 import com.goldenstar.silverstar.art.ParadiseFalls;
+import mods.flammpfeil.slashblade.init.DefaultResources;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
 import net.minecraftforge.registries.DeferredRegister;
@@ -27,15 +29,53 @@ public final class SSComboStates {
 
     public static final RegistryObject<ComboState> PARADISE_FALLS = COMBO_STATES.register("paradise_falls",
             () -> ComboState.Builder.newInstance()
-                    // 起手沿用原版拔刀剑自己的动作：0-25 帧就是第一刀（combo_a1 1-10 + 收刀 10-21）。
-                    // tickAction 只在状态存活期间跑，而瞬移发生在第 16 tick，帧区间要给够。
-                    .startAndEnd(0, 25)
+                    // 普通版：借原版「次元斩」那一整段 —— 1900 拔刀蓄力 → 1923 斩出 → 1928 收刀 → 1963 结束。
+                    // 63 帧约合 42 tick（2.1 秒），人体动作也登记成同一段（见 PlayerAnimRegister）。
+                    // motionLoc 取原版动作文件，让“这段帧号属于谁”自洽。
+                    .startAndEnd(1900, 1963)
+                    .motionLoc(DefaultResources.ExMotionLocation)
                     .priority(10)
                     .speed(1.0f)
-                    // 1200 毫秒，比整段动作长，免得动作还没走完就被超时切走
-                    .timeout(1200)
+                    .timeout(2600)
                     .addTickAction(ParadiseFalls::tick)
                     .next(entity -> ComboStateRegistry.STANDBY.getId())
+                    .nextOfTimeout(entity -> ComboStateRegistry.NONE.getId())
+                    .build());
+
+    /**
+     * 完美版：借原版「完美次元斩」那一段 —— 1923 直接斩出（跳过 23 帧拔刀蓄力）→ 1963 结束。
+     * 40 帧约合 27 tick（1.3 秒）。
+     */
+    public static final RegistryObject<ComboState> PARADISE_FALLS_JUST = COMBO_STATES.register("paradise_falls_just",
+            () -> ComboState.Builder.newInstance()
+                    .startAndEnd(1923, 1963)
+                    .motionLoc(DefaultResources.ExMotionLocation)
+                    .priority(10)
+                    .speed(1.0f)
+                    .timeout(1800)
+                    .addTickAction(ParadiseFalls::tickJust)
+                    .next(entity -> ComboStateRegistry.STANDBY.getId())
+                    .nextOfTimeout(entity -> ComboStateRegistry.NONE.getId())
+                    .build());
+
+    /**
+     * 「余烬」：借原版连段 C 那一段（400~488 帧，约 59 tick / 2 秒）。
+     * 斩击落在第 30 tick，命中后目标身上留一层三秒后结算的余温。
+     */
+    public static final RegistryObject<ComboState> EMBER = COMBO_STATES.register("ember",
+            () -> ComboState.Builder.newInstance()
+                    .startAndEnd(400, 488)
+                    .motionLoc(DefaultResources.ExMotionLocation)
+                    .priority(10)
+                    .speed(1.0f)
+                    .timeout(2900)
+                    .addTickAction(Ember::tick)
+                    // next 指回自己 = 这段动作期间“不许打断”。
+                    // 原版所有剑技段都是这么写的：progressCombo 看到 next == cur 直接返回 NONE，
+                    // 左键挥刀被挡；doChargeAction 也有同形态的保护，蓄力同样被挡。
+                    // 什么时候放开？由 Ember 在第 36 tick（伤害结算那一刻）主动切回待机。
+                    .next(entity -> new net.minecraft.resources.ResourceLocation(
+                            com.goldenstar.silverstar.Silverstar.MODID, "ember"))
                     .nextOfTimeout(entity -> ComboStateRegistry.NONE.getId())
                     .build());
 

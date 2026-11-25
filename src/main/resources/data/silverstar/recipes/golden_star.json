@@ -1,0 +1,48 @@
+{
+  "type": "slashblade:shaped_blade",
+  "blade": "silverstar:golden_star",
+  "category": "equipment",
+  "key": {
+    "A": {
+      "item": "slashblade:proudsoul_trapezohedron"
+    },
+    "B": {
+      "item": "minecraft:blaze_rod"
+    },
+    "C": {
+      "item": "slashblade:proudsoul_crystal"
+    },
+    "D": {
+      "item": "minecraft:blaze_rod"
+    },
+    "E": {
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade_addon:kirisaya",
+        "kill": 2000
+      }
+    },
+    "F": {
+      "item": "minecraft:blaze_rod"
+    },
+    "G": {
+      "item": "slashblade_addon:slash_blade_tofu_diamond"
+    },
+    "H": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "I": {
+      "item": "slashblade_addon:slash_blade_tofu_diamond"
+    }
+  },
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "result": {
+    "item": "slashblade:slashblade"
+  },
+  "show_notification": true
+}

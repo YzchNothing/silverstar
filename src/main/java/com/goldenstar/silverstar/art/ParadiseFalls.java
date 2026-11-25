@@ -38,29 +38,49 @@ public final class ParadiseFalls {
     private static final double BEHIND_DISTANCE = 2.0D;
     private static final int SLOW_TICKS = 40;
     private static final int SLOW_AMPLIFIER = 10;
-    private static final long CAST_TICK = 2L;
-    /** 次元斩放完后的停顿：CAST_TICK 之后第 14 tick 才瞬移（约 0.7 秒），要留在 startAndEnd 的帧区间内。 */
-    private static final long DROP_TICK = CAST_TICK + 14L;
+    /**
+     * 普通版第几 tick 放次元斩。15 对应原版动作的 1923 帧（1900 起算 23 帧 ≈ 15 tick），
+     * 早于此值人体还在拔刀蓄力。
+     */
+    private static final long CAST_TICK = 15L;
+    /**
+     * 完美版第几 tick 放：动作从 1923 帧（斩出那一帧）直接起算，没有蓄力，所以第 1 tick 就该出刀。
+     * 用 1 而不是 0，是因为不能赌 tickAction 在 elapsed=0 时一定被调到。
+     */
+    private static final long JUST_CAST_TICK = 1L;
+    /** 次元斩放完后的停顿（约 0.7 秒）才瞬移，要留在 startAndEnd 的帧区间内。 */
+    private static final long DROP_DELAY = 14L;
     /** 前半段那一批目标存在玩家的持久化数据里，跨 tick 传。 */
     private static final String TARGETS_KEY = "silverstar:paradise_falls_targets";
 
     private ParadiseFalls() {
     }
 
+    /** 普通版（蓄力满再松手）。 */
     public static void tick(LivingEntity user) {
+        tick(user, false);
+    }
+
+    /** 完美版（在充满的那几 tick 内松手）：不蓄力、直接斩出，球带 Critical。 */
+    public static void tickJust(LivingEntity user) {
+        tick(user, true);
+    }
+
+    private static void tick(LivingEntity user, boolean just) {
         if (user.level().isClientSide()) {
             return;
         }
+        long castTick = just ? JUST_CAST_TICK : CAST_TICK;
         long elapsed = ComboState.getElapsed(user);
-        if (elapsed == CAST_TICK) {
-            castSlashes(user);
-        } else if (elapsed == DROP_TICK) {
+        if (elapsed == castTick) {
+            castSlashes(user, just);
+        } else if (elapsed == castTick + DROP_DELAY) {
             strikeWorst(user);
         }
     }
 
     /** 前半段：范围内每个目标各吃一次缓慢 XI 和一个次元斩，并记下这批目标。不瞬移。 */
-    private static void castSlashes(LivingEntity user) {
+    private static void castSlashes(LivingEntity user, boolean just) {
         Level level = user.level();
         ItemStack blade = user.getMainHandItem();
 
@@ -77,13 +97,19 @@ public final class ParadiseFalls {
 
             victim.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, SLOW_TICKS, SLOW_AMPLIFIER));
 
+            // 自己造球、摆到目标身上（这条路的目标位置是准的）。完美版再多打一个 Critical 标记：
+            // 原版 doJudgementCutJust 相对普通版的全部差异就是这一句 —— 击退改抛飞、多甩一道刀光。
             EntityJudgementCut cut = new EntityJudgementCut(SlashBlade.RegistryEvents.JudgementCut, level);
-            cut.setPos(victim.getX(), victim.getY(), victim.getZ());
+            // 高度对齐普通/完美次元斩（它落在准心指到的那一点，约等于生物眼睛高度），
+            // 而不是 doJudgementCutSuper 那样落在脚下。
+            Vec3 eye = victim.getEyePosition();
+            cut.setPos(eye.x, eye.y, eye.z);
             cut.setShooter(user);
             blade.getCapability(ItemSlashBlade.BLADESTATE)
                     .ifPresent(state -> cut.setColor(state.getColorCode()));
             user.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
                     .ifPresent(rank -> cut.setRank(rank.getRankLevel(level.getGameTime())));
+            cut.setIsCritical(just);
             level.addFreshEntity(cut);
 
             ids.add(victim.getUUID());

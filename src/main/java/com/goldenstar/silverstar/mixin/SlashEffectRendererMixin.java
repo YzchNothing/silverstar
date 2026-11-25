@@ -69,14 +69,28 @@ public abstract class SlashEffectRendererMixin {
      * 开了光影时不画星空，保留原版这一层，但把颜色换成青色。
      *
      * <p>只换 RGB，alpha 不能动——原版拿 alpha 当“这一层多亮”以及淡出的通道，换了会出怪事。</p>
+     *
+     * <p>其余情况一律原样放行：刀光的颜色应当由刀本身决定（每把刀在状态里存着自己的效果色），
+     * 渲染端不要再插手。</p>
      */
     @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE", target = SET_COL_INT))
     private void silverstar$setCol(int argb) {
         if (StarOverlay.vanillaLook()) {
             BladeRenderState.setCol(StarOverlay.recolour(argb, StarOverlay.CYAN));
         } else {
-            BladeRenderState.setCol(argb);
+            // 非星空刀光（别的刀放余烬）：原版这几层本身偏白，把刀自己的颜色乘上去。
+            int tint = StarOverlay.slashTint();
+            BladeRenderState.setCol(tint < 0 ? argb : multiply(argb, tint));
         }
+    }
+
+    /** 把颜色的 RGB 三个通道按刀色缩放，alpha 原样保留。 */
+    private static int multiply(int argb, int rgb) {
+        int a = argb & 0xFF000000;
+        int r = ((argb >> 16) & 0xFF) * ((rgb >> 16) & 0xFF) / 255;
+        int g = ((argb >> 8) & 0xFF) * ((rgb >> 8) & 0xFF) / 255;
+        int b = (argb & 0xFF) * (rgb & 0xFF) / 255;
+        return a | (r << 16) | (g << 8) | b;
     }
 
     /** 原版的混合绘制：是纯银星的刀光就换成星空着色器画，否则原样放行。 */

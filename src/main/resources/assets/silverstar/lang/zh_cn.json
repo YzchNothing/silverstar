@@ -1,7 +1,12 @@
-{
+﻿{
   "item.silverstar.silver_star": "纯银星",
   "item.silverstar.silver_star.desc": "银色的刀身映着星子的光。",
+  "item.silverstar.test_annihilation": "湮灭·测试刀（临时）",
   "slash_art.silverstar.paradise_falls": "天堂陨落",
   "se.silverstar.one_left": "唯余其一",
-  "se.silverstar.star_eclipse": "星蚀"
+  "se.silverstar.star_eclipse": "星蚀",
+  "item.silverstar.golden_star": "金色星",
+  "slash_art.silverstar.ember": "余烬",
+  "se.silverstar.afterglow": "余温",
+  "se.silverstar.gold_shards": "碎金"
 }

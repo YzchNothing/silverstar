@@ -61,6 +61,13 @@ public final class SSDescriptors {
             + WAVEFRONT_OBJECT
             + OVERRIDED_REST;
 
+    /** 自发光 + 写深度那一版：锁定目标的圆环和血条用它。 */
+    public static final String LUMINOUS_DEPTH_WRITE =
+            BLADE_RENDER_STATE + "renderOverridedLuminousDepthWrite("
+            + "Lnet/minecraft/world/item/ItemStack;"
+            + WAVEFRONT_OBJECT
+            + OVERRIDED_REST;
+
     /** 底层那个 8 参版本，多一个 RenderType getter 和一个 useGlint。 */
     public static final String OVERRIDED =
             BLADE_RENDER_STATE + "renderOverrided("

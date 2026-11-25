@@ -1,5 +1,6 @@
 package com.goldenstar.silverstar;
 
+import com.goldenstar.silverstar.client.PlayerAnimCompat;
 import com.goldenstar.silverstar.config.SSConfig;
 import com.goldenstar.silverstar.registry.SSComboStates;
 import com.goldenstar.silverstar.registry.SSSlashArts;
@@ -32,6 +33,9 @@ public class Silverstar {
         SSSlashArts.SLASH_ARTS.register(bus);
         SSComboStates.COMBO_STATES.register(bus);
         SSSpecialEffects.SPECIAL_EFFECT.register(bus);
+
+        // 人体动作：把「天堂陨落」登记进拔刀剑的动作表（只在装了 playerAnimator 的客户端生效）。
+        bus.addListener(PlayerAnimCompat::onClientSetup);
 
         // 客户端配置：刀身是否也画成星空。注册成 CLIENT 类型，文件落在 config/silverstar-client.toml。
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, SSConfig.SPEC);

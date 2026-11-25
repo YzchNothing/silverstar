@@ -1,6 +1,8 @@
 package com.goldenstar.silverstar.registry;
 
 import com.goldenstar.silverstar.Silverstar;
+import com.goldenstar.silverstar.se.Afterglow;
+import com.goldenstar.silverstar.se.GoldShards;
 import com.goldenstar.silverstar.se.OneLeft;
 import com.goldenstar.silverstar.se.StarEclipse;
 import mods.flammpfeil.slashblade.registry.specialeffects.SpecialEffect;
@@ -25,6 +27,14 @@ public final class SSSpecialEffects {
     /** 星蚀：给目标叠星痕，连击引爆、死亡传染。 */
     public static final RegistryObject<SpecialEffect> STAR_ECLIPSE =
             SPECIAL_EFFECT.register("star_eclipse", StarEclipse::new);
+
+    /** 余温：只认「身上还在烧」的目标，追加伤害并续火；烧死时回血、把火递给周围的人。 */
+    public static final RegistryObject<SpecialEffect> AFTERGLOW =
+            SPECIAL_EFFECT.register("afterglow", Afterglow::new);
+
+    /** 碎金：残光（按目标已掉血量追加）+ 三段追伤（后续 1/3/5 tick 各追一段）。 */
+    public static final RegistryObject<SpecialEffect> GOLD_SHARDS =
+            SPECIAL_EFFECT.register("gold_shards", GoldShards::new);
 
     private SSSpecialEffects() {
     }

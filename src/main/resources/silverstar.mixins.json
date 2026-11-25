@@ -8,6 +8,7 @@
     "DriveRendererMixin",
     "JudgementCutRendererMixin",
     "LayerMainBladeMixin",
+    "LockonCircleRenderMixin",
     "SlashEffectRendererMixin",
     "SummonedSwordRendererMixin"
   ],
