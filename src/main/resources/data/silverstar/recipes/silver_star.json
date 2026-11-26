@@ -12,7 +12,11 @@
       }
     },
     "B": {
-      "item": "minecraft:netherite_ingot"
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade:sange"
+      }
     },
     "C": {
       "type": "slashblade:blade",
@@ -36,7 +40,11 @@
       "nbt": "{StoredEnchantments:[{id:\"minecraft:binding_curse\",lvl:1s}]}"
     },
     "G": {
-      "item": "minecraft:netherite_ingot"
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade:sange"
+      }
     },
     "H": {
       "type": "slashblade:blade",
@@ -47,7 +55,11 @@
       }
     },
     "I": {
-      "item": "minecraft:netherite_ingot"
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade:sange"
+      }
     }
   },
   "pattern": [

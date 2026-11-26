@@ -27,13 +27,23 @@
       "item": "minecraft:blaze_rod"
     },
     "G": {
-      "item": "slashblade_addon:slash_blade_tofu_diamond"
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade:yuzukitukumo",
+        "kill": 2000
+      }
     },
     "H": {
       "item": "minecraft:netherite_ingot"
     },
     "I": {
-      "item": "slashblade_addon:slash_blade_tofu_diamond"
+      "type": "slashblade:blade",
+      "item": "slashblade:slashblade",
+      "request": {
+        "name": "slashblade:yuzukitukumo",
+        "kill": 2000
+      }
     }
   },
   "pattern": [

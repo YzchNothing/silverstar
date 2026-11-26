@@ -16,7 +16,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -104,18 +103,21 @@ public class GoldShards extends SpecialEffect {
         if (event.phase != TickEvent.Phase.END || PENDING.isEmpty()) {
             return;
         }
-        Iterator<Pending> it = PENDING.iterator();
+        // 不要边遍历边改 PENDING：迭代器版本号会失效，抛 ConcurrentModificationException 直接崩服。
+        // 先算出「这一 tick 到期」和「还要继续倒计时」两批，最后一次性替换。
         List<Pending> due = new ArrayList<>();
-        while (it.hasNext()) {
-            Pending p = it.next();
+        List<Pending> next = new ArrayList<>();
+        for (Pending p : PENDING) {
             if (p.ticksLeft() <= 1) {
                 due.add(p);
-                it.remove();
             } else {
-                it.remove();
-                PENDING.add(new Pending(p.target(), p.source(), p.ticksLeft() - 1));
+                next.add(new Pending(p.target(), p.source(), p.ticksLeft() - 1));
             }
         }
+        PENDING.clear();
+        PENDING.addAll(next);
+
+        // 落在遍历之外：strike 造成的伤害不会再往 PENDING 里塞东西（监听只认 PLAYER_ATTACK）。
         for (Pending p : due) {
             strike(p.target(), p.source());
         }
