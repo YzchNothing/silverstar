@@ -2,15 +2,11 @@ package com.goldenstar.silverstar.client;
 
 import com.goldenstar.silverstar.Silverstar;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexSorting;
 import mods.flammpfeil.slashblade.client.renderer.model.obj.Face;
-import mods.flammpfeil.slashblade.client.renderer.model.obj.GroupObject;
 import mods.flammpfeil.slashblade.client.renderer.model.obj.WavefrontObject;
-import mods.flammpfeil.slashblade.client.renderer.util.BladeRenderState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -37,8 +33,7 @@ import java.util.List;
  * 它做完最后的合成才放开，也就是 {@code AFTER_LEVEL}。</p>
  *
  * <p><b>怎么保证位置不歪：</b>原版渲染器算好的位姿（{@code PoseStack} 里的矩阵）原样记下来，
- * 重放时先装回相机视图矩阵，再乘这份位姿，顶点还是由同一段
- * {@link BladeRenderState#renderOverrided} 生成。</p>
+ * 重放时直接在单位视图矩阵下乘这份位姿，顶点仍由同一个模型（{@code WavefrontObject}）生成。</p>
  *
  * <p><b>视图矩阵保持单位阵。</b>原版把相机旋转写进了 {@code PoseStack}，顶点已经是相机相对坐标；
  * 再叠一层相机旋转只会把刀光甩成碎块（实测三种都试过）。</p>
@@ -71,24 +66,6 @@ public final class StarDeferred {
 
     private static final Logger LOG = LoggerFactory.getLogger("silverstar/deferred");
     private static boolean loggedFailure;
-    private static boolean loggedModel;
-    private static long lastTrace;
-
-    /** 只读探针：问 Iris 现在颜色写入是不是被锁着。 */
-    private static boolean locked() {
-        try {
-            if (lockedMethod == null) {
-                lockedMethod = Class.forName("net.irisshaders.iris.gl.blending.DepthColorStorage")
-                        .getMethod("isDepthColorLocked");
-            }
-            return Boolean.TRUE.equals(lockedMethod.invoke(null));
-        } catch (Throwable ignored) {
-            lockedMethod = null;
-            return false;
-        }
-    }
-
-    private static java.lang.reflect.Method lockedMethod;
 
     private StarDeferred() {
     }
@@ -127,14 +104,7 @@ public final class StarDeferred {
         // 世界渲染时顶点的空间已经由位姿本身决定了（原版把相机旋转写进了 PoseStack），
         // 这里保持单位阵，别再叠一层相机旋转——实测叠上去会把刀光甩成碎块。
         PoseStack mv = RenderSystem.getModelViewStack();
-        boolean trace = System.currentTimeMillis() - lastTrace > 1000L;
-        if (trace) {
-            lastTrace = System.currentTimeMillis();
-            LOG.info("deferred trace in size={} locked={}", ENTRIES.size(), locked());
-        }
         try {
-            int drawn = 0;
-            Entry lastEntry = ENTRIES.get(ENTRIES.size() - 1);
             for (Entry entry : ENTRIES) {
                 mv.pushPose();
                 mv.last().pose().identity();
@@ -173,16 +143,8 @@ public final class StarDeferred {
                     Face.resetLightMap();
                 }
                 buffers.endBatch(drawType);
-                drawn++;
-                if (trace && drawn <= 2) {
-                    LOG.info("deferred trace after #{} locked={} op={} type={}",
-                            drawn, locked(), entry.opacity(), drawType);
-                }
 
                 mv.popPose();
-            }
-            if (trace) {
-                LOG.info("deferred trace out drawn={} locked={}", drawn, locked());
             }
         } catch (Throwable failure) {
             if (!loggedFailure) {

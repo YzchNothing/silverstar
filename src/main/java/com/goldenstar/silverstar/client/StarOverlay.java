@@ -306,12 +306,6 @@ public final class StarOverlay {
 
     /** 幻影剑渲染器开头调用：幻影剑是“凭空出现”的，所以前 6 tick 做个淡入。 */
     public static void beginSword(Entity entity, float partialTicks) {
-        if (shaderPackActive()) {
-            STARRY.set(Boolean.FALSE);
-            FADE.set(1.0F);
-            PALETTE.set(StarRender.FALLBACK_SILVER);
-            return;
-        }
         if (!(entity instanceof EntityAbstractSummonedSword sword) || !isStarry(sword)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
@@ -328,17 +322,14 @@ public final class StarOverlay {
 
     /** 次元斩渲染器开头调用：次元斩前 25% 的寿命做淡入，让它像“张开”而不是“闪一下”。 */
     public static void beginDim(Entity entity, float partialTicks) {
-        if (shaderPackActive()) {
-            STARRY.set(Boolean.FALSE);
-            FADE.set(1.0F);
-            return;
-        }
         if (!(entity instanceof EntityJudgementCut dim) || !isStarry(dim)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
+            PALETTE.set(StarRender.FALLBACK_SILVER);
             return;
         }
         STARRY.set(Boolean.TRUE);
+        PALETTE.set(markerPalette(dim));
         float lifetime = Math.max(1.0F, dim.getLifetime());
         float progress = Math.min(lifetime, dim.tickCount + partialTicks) / lifetime;
         float t = Math.min(1.0F, progress / 0.25F);
@@ -353,12 +344,6 @@ public final class StarOverlay {
      * 寿命末尾做淡出，理由同刀光：实体是按 tick 到点删的，最后一帧还留着一截透明度。</p>
      */
     public static void beginWave(Entity entity, float partialTicks) {
-        if (shaderPackActive()) {
-            STARRY.set(Boolean.FALSE);
-            FADE.set(1.0F);
-            PALETTE.set(StarRender.FALLBACK_SILVER);
-            return;
-        }
         if (!(entity instanceof EntityDrive drive) || !isStarry(drive)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
@@ -440,7 +425,8 @@ public final class StarOverlay {
      * 所以没有“属于谁”可以查，只能看本地玩家手上拿的是什么。</p>
      */
     public static boolean lockonStarry() {
-        return !shaderPackActive() && OurBlade.of(Minecraft.getInstance().player).starry();
+        // 装光影时也照常判定：drawLockon 会把它记进 StarDeferred，等合成之后重放。
+        return OurBlade.of(Minecraft.getInstance().player).starry();
     }
 
     /** 圆环的三个组都用同一套星空画，形状仍由原版贴图的 alpha 决定。 */
@@ -455,9 +441,18 @@ public final class StarOverlay {
         if (palette == null) {
             palette = StarRender.FALLBACK_SILVER;
         }
+        RenderType renderType = StarRenderTypes.type(StarSlot.LOCKON, texture);
+
+        // 光影下同样交给 StarDeferred。
+        if (shaderPackActive()) {
+            if (!shadowPass()) {
+                StarDeferred.record(stack, model, group, texture, light, pose, palette, 1.0F, time, renderType);
+            }
+            return;
+        }
+
         StarShaders.updateLockon(time, palette);
 
-        RenderType renderType = StarRenderTypes.type(StarSlot.LOCKON, texture);
         renderGroup(stack, model, group, texture, pose, buffers, light, renderType);
         flush(buffers, renderType);
     }
@@ -475,10 +470,20 @@ public final class StarOverlay {
         float time = minecraft.level == null ? 0.0F : (float) minecraft.level.getGameTime() * 0.05F;
 
         float alpha = WIND_ALPHA.get();
+        RenderType renderType = StarRenderTypes.type(StarSlot.WIND, texture);
+
+        // 光影下不在这画，记下来交给 StarDeferred 等合成之后重放。
+        if (shaderPackActive()) {
+            if (!shadowPass()) {
+                StarDeferred.record(stack, model, group, texture, light, pose,
+                        PALETTE.get(), FADE.get() * alpha, time, renderType);
+            }
+            return;
+        }
+
         // 调色板决定这一片星域是什么颜色，要不要再乘上每一道自己的颜色由调色板说了算。
         StarShaders.updateWind(time, FADE.get() * alpha, PALETTE.get(), 1.0F, 1.0F, 1.0F);
 
-        RenderType renderType = StarRenderTypes.type(StarSlot.WIND, texture);
         renderGroup(stack, model, group, texture, pose, buffers, light, renderType);
 
         // 每一道单独提交：色调和透明度是每道自己的，混在一批里会被最后一个覆盖。
@@ -708,6 +713,15 @@ public final class StarOverlay {
         Minecraft minecraft = Minecraft.getInstance();
         // 游戏时间推进星空漂移；乘 0.05 只是把“每 tick”换成着色器里好用的量级。
         float time = minecraft.level == null ? 0.0F : (float) minecraft.level.getGameTime() * 0.05F;
+
+        // 光影期间画不进去（世界渲染阶段颜色写入被关掉），把这一层记下来
+        // 等 AFTER_LEVEL 再原样重放（见 StarDeferred）。阴影那一趟用的是光照正交矩阵，跳过。
+        if (shaderPackActive()) {
+            if (!shadowPass()) {
+                StarDeferred.record(stack, model, group, texture, light, pose, palette, opacity, time, renderType);
+            }
+            return;
+        }
 
         StarShaders.update(time, opacity, palette);
 

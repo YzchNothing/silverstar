@@ -17,9 +17,9 @@ public enum StarSlot {
     /** 原版那道刀光的其中一层（一个实体画四层）。 */
     ARC("cosmic_arc", Kind.ADDITIVE, 1.15F, true, 1.0F,
             new float[]{1.0F, 1.0F, 1.0F}, 0.26F),
-    /** 幻影剑：整把剑发光，星点稀疏，所以星域放大一点、不透明度额外给一档增益，色调偏紫。 */
-    PHANTOM("cosmic_phantom", Kind.ADDITIVE, 1.45F, true, 1.8F,
-            new float[]{0.78F, 0.35F, 1.0F}, 0.62F),
+    /** 幻影剑：整把剑发光。参数和刀光保持一致（星域缩放、亮度、乘色都不搞特殊），只是程序用星点稀疏的那份。 */
+    PHANTOM("cosmic_phantom", Kind.ADDITIVE, 1.15F, true, 1.0F,
+            new float[]{1.0F, 1.0F, 1.0F}, 0.26F),
     /** 次元斩外圈的五道风纹。 */
     WIND("cosmic_wind", Kind.ADDITIVE, 1.15F, true, 1.0F,
             new float[]{1.0F, 1.0F, 1.0F}, 0.34F),
