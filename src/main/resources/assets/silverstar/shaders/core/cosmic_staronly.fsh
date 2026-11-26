@@ -34,6 +34,11 @@ uniform float externalScale;
 uniform float opacity;
 uniform float brightness;
 uniform vec3 tint;
+uniform vec3 bgBase;
+uniform vec3 bgAmp;
+uniform vec3 bgPhase;
+uniform vec3 starBase;
+uniform vec3 starJitter;
 
 in float vertexDistance;
 in vec4 vertexColor;
@@ -207,8 +212,10 @@ float cm_texel(int symbol, int px, int py, int tick)
 vec3 cm_background(int ctype, float t)
 {
     float pulse = mod(t, 400.0) / 400.0;
-    vec3 bg = vec3(0.1, sin(pulse * CM_PI * 2.0) * 0.075 + 0.225, cos(pulse * CM_PI * 2.0) * 0.05 + 0.3);
-    return bg;
+    // 底色：三条通道各自按「振幅 × sin(2π·pulse + 相位) + 中点」循环，
+    // 参数全部由 StarRender 从刀的 json 里读出来灌进来（见 StarShaders.bind）。
+    vec3 wave = sin(vec3(pulse * CM_PI * 2.0) + bgPhase);
+    return wave * bgAmp + bgBase;
 }
 
 vec3 cm_starColor(int ctype, float rand1, float rand2, float rand3, float rawu, float glyph, int layer, float t)
@@ -221,7 +228,9 @@ vec3 cm_starColor(int ctype, float rand1, float rand2, float rand3, float rawu, 
     }
     else
     {
-        c = vec3(mod(rand1, 29.0) / 29.0 * 0.3 + 0.4, mod(rand2, 35.0) / 35.0 * 0.4 + 0.6, mod(rand1, 17.0) / 17.0 * 0.3 + 0.7);
+        // 星点颜色也是数据：每通道一个中点 + 一个抖动幅度。
+        c = vec3(mod(rand1, 29.0) / 29.0, mod(rand2, 35.0) / 35.0,
+                 mod(rand1, 17.0) / 17.0) * starJitter + starBase;
     }
     return c;
 }

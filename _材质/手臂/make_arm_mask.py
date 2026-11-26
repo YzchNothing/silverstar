@@ -36,8 +36,11 @@ a = np.where(
 a = np.where(v < 0.02, 0.0, a)
 
 alpha = np.clip(a * 0.5, 0.0, 1.0)                   # 除以 2，见上面的说明
+# 2026-11-26：最浓处从 101/255 提到 175/255（用户定值），整条渐变等比放大，形状不变。
+alpha = np.clip(alpha * (175.0 / 101.0), 0.0, 1.0)
 rgb = np.full((H, W, 3), 255, dtype=np.uint8)
 a8 = np.repeat((alpha[:, None] * 255.0).astype(np.uint8), W, axis=1)
+a8 = np.minimum(a8, 175)                              # 四舍五入会到 176，卡回 175
 img = np.dstack([rgb, a8])
 Image.fromarray(img.astype(np.uint8), "RGBA").save(out, optimize=True)
 

@@ -171,6 +171,56 @@
                 0.86,
                 1.0
             ]
+        },
+        {
+            "name": "bgBase",
+            "type": "float",
+            "count": 3,
+            "values": [
+                0.1,
+                0.225,
+                0.3
+            ]
+        },
+        {
+            "name": "bgAmp",
+            "type": "float",
+            "count": 3,
+            "values": [
+                0.0,
+                0.075,
+                0.05
+            ]
+        },
+        {
+            "name": "bgPhase",
+            "type": "float",
+            "count": 3,
+            "values": [
+                0.0,
+                0.0,
+                1.5707964
+            ]
+        },
+        {
+            "name": "starBase",
+            "type": "float",
+            "count": 3,
+            "values": [
+                0.4,
+                0.6,
+                0.7
+            ]
+        },
+        {
+            "name": "starJitter",
+            "type": "float",
+            "count": 3,
+            "values": [
+                0.3,
+                0.4,
+                0.3
+            ]
         }
     ]
 }

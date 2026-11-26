@@ -28,13 +28,27 @@
     "special_effects": [
       "silverstar:afterglow",
       "silverstar:gold_shards"
-    ],
-    "summon_sword_color": 15254634
+    ]
   },
   "render": {
     "model": "slashblade:model/named/sange/sange.obj",
     "texture": "silverstar:model/golden_star.png",
-    "carry_type": "katana"
-  },
-  "slash_art": "silverstar:ember"
+    "carry_type": "katana",
+    "summon_sword_color": 14728293,
+    "star_render": {
+      "family": "gold",
+      "bg_base": [0.42, 0.26, 0.09],
+      "bg_amp": [0.06, 0.05, 0.02],
+      "bg_phase": [0.0, 1.5707964, 1.2],
+      "star_base": [0.85, 0.68, 0.32],
+      "star_jitter": [0.15, 0.18, 0.16],
+      "lane_wind": false,
+      "slots": {
+        "blade": {"brightness": 0.95},
+        "arc": {"brightness": 0.25},
+        "phantom": {"tint": [1.0, 0.78, 0.42]},
+        "wave": {"tint": [1.0, 0.72, 0.3], "brightness": 0.5}
+      }
+    }
+  }
 }

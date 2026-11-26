@@ -26,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * </ol>
  *
  * <p>球和光晕都保持原版——那两颗本来是“空间被切开的洞”，靠反色压黑才成立，套星空会变成一颗发光实心球，
- * 语义就变了。我们只改风纹的颜色，让它跟刀光同色。</p>
+ * 语义就变了。我们只把五道风纹换成星空那一路（开光影时整层交回原版）。</p>
  */
 @Mixin(JudgementCutRenderer.class)
 public abstract class JudgementCutRendererMixin {
@@ -37,49 +37,21 @@ public abstract class JudgementCutRendererMixin {
     /** 五道风纹走的那一路。 */
     private static final String COLOR_WRITE_TARGET = SSDescriptors.COLOR_WRITE;
 
-    /** 原版设置颜色（int 形式），球用这个。 */
-    private static final String SET_COL_INT = SSDescriptors.SET_COL_INT;
-
     /** 原版设置颜色（Color 对象形式），风纹用这个。 */
     private static final String SET_COL_COLOR = SSDescriptors.SET_COL_COLOR;
-
-    /**
-     * 球（和那圈扁平光晕）的颜色。
-     *
-     * <p>原版这两颗是「空间被切开的洞」：走反色那条路，颜色越深反色后越亮，所以刀色是什么它就不像什么。
-     * 我们现在按刀给一个颜色：纯银星青、金色星金。因为这条路会反色，传进去的是目标色的反相，
-     * 反色之后正好变回要的颜色。</p>
-     *
-     * <p>不装光影时球仍然反色，只是换了个色相，所以“洞”的观感还在。</p>
-     */
-    @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE", target = SET_COL_INT))
-    private void silverstar$setSphereCol(int argb) {
-        int target = StarOverlay.dimSphereColour();
-        if (target < 0) {
-            BladeRenderState.setCol(argb);
-        } else {
-            // 只换色相，alpha 还是原版给的那一档亮度。
-            int alpha = argb & 0xFF000000;
-            BladeRenderState.setCol(alpha | (target & 0xFFFFFF));
-        }
-    }
 
     /**
      * 五道风纹的颜色。
      *
      * <p>原版每画一道就先设一次颜色（颜色对象里带着这一道的 alpha）。这里把值留一份给星空那路当 tint，
-     * 同时照原样设下去，开光影时走的就是普通换色。</p>
+     * 颜色本身照原样设下去——染色归原版，我们不插手。</p>
      */
     @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE", target = SET_COL_COLOR))
     private void silverstar$setWindCol(java.awt.Color colour) {
         if (StarOverlay.active()) {
             StarOverlay.setWindTint(colour);
-            BladeRenderState.setCol(StarOverlay.vanillaLook()
-                    ? StarOverlay.recolour(colour, StarOverlay.CYAN)
-                    : colour);
-        } else {
-            BladeRenderState.setCol(colour);
         }
+        BladeRenderState.setCol(colour);
     }
 
     /** 渲染开始：判定这次画的次元斩是不是纯银星的。 */
@@ -98,12 +70,12 @@ public abstract class JudgementCutRendererMixin {
         StarOverlay.end();
     }
 
-    /** 风纹：不装光影时用星空（和刀光同一套），装了光影就退回原版只换色。 */
+    /** 风纹：不装光影时用星空（和刀光同一套），装了光影就整层交回原版。 */
     @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE", target = COLOR_WRITE_TARGET))
     private void silverstar$wind(ItemStack stack, WavefrontObject model, String group,
                                  ResourceLocation texture, PoseStack pose,
                                  MultiBufferSource buffers, int light) {
-        if (StarOverlay.active() && !StarOverlay.vanillaLook()) {
+        if (StarOverlay.active()) {
             StarOverlay.drawWind(stack, model, group, texture, pose, buffers, light);
         } else {
             BladeRenderState.renderOverridedColorWrite(stack, model, group, texture, pose, buffers, light);

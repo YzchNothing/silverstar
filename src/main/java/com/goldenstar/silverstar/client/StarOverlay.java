@@ -1,6 +1,7 @@
 package com.goldenstar.silverstar.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.goldenstar.silverstar.art.Ember;
 import com.goldenstar.silverstar.config.SSConfig;
 import mods.flammpfeil.slashblade.client.renderer.model.obj.WavefrontObject;
 import mods.flammpfeil.slashblade.client.renderer.util.BladeRenderState;
@@ -61,22 +62,35 @@ public final class StarOverlay {
     /** 当前这一层的不透明度，用来做淡入淡出，免得特效到时间直接消失。 */
     private static final ThreadLocal<Float> FADE = ThreadLocal.withInitial(() -> 1.0F);
 
-    /**
-     * 开了光影时替换用的三个颜色。
-     *
-     * <p>Iris 会在实体渲染之后重置核心着色器，我们自己的星空着色器在那条管线里画不出来，
-     * 所以干脆不画星空，改为把原版那几层的颜色换掉——观感上仍然是“这把刀不一样”，又不用跟管线打架。</p>
-     */
-    public static final int CYAN = 0x2E8FA8;
-    public static final int DEEP_BLUE = 0x16214F;
-    public static final int PURPLE = 0x5E3486;
-
     private static boolean shaderPackActive;
     private static long nextPackProbe;
     private static Object irisApi;
     private static java.lang.reflect.Method isPackInUse;
+    private static java.lang.reflect.Method isShadowPass;
 
     private StarOverlay() {
+    }
+
+    /**
+     * 现在是不是在画光影的阴影贴图。
+     *
+     * <p>阴影那一趟世界会被再画一遍，但相机矩阵换成了正交的光照矩阵——那一趟记下来的位姿
+     * 拿回来重放只会跑到屏幕外面去。所以记录前先把这一趟排除掉。</p>
+     */
+    public static boolean shadowPass() {
+        if (!shaderPackActive()) {
+            return false;
+        }
+        try {
+            if (isShadowPass == null) {
+                isShadowPass = Class.forName("net.irisshaders.iris.api.v0.IrisApi")
+                        .getMethod("isRenderingShadowPass");
+            }
+            return Boolean.TRUE.equals(isShadowPass.invoke(irisApi));
+        } catch (Throwable ignored) {
+            isShadowPass = null;
+            return false;
+        }
     }
 
     /**
@@ -94,16 +108,14 @@ public final class StarOverlay {
         return shaderPackActive;
     }
 
-    /** 这层属于纯银星，但必须退回原版外观（开光影时的分支）。 */
-    public static boolean vanillaLook() {
-        return STARRY.get() && shaderPackActive();
-    }
-
     /**
      * 用反射问 Iris（光影模组）有没有在跑光影。
      *
      * <p>用反射是为了不把 Iris 变成硬依赖：没装 Iris 时这里抛异常、我们当成“没开光影”就好，
      * 模组照样能启动。反射出来的类和 Method 会缓存起来，避免每次调用都重新查一遍。</p>
+     *
+     * <p>这个判断只用来决定“要不要画我们的星空层”：Iris 接管核心着色器后我们的程序画不出来，
+     * 画了只会是一块黑，所以有光影时整层交回原版。颜色本身不归我们管——原版怎么上色就怎么上色。</p>
      */
     private static boolean probeShaderPack() {
         try {
@@ -120,50 +132,16 @@ public final class StarOverlay {
         }
     }
 
-    /**
-     * 只替换 ARGB 颜色里的红绿蓝，<b>alpha 原样保留</b>。
-     *
-     * <p>原版每层用的 alpha 不只是透明度，它同时是那一层的亮度档位；刀光淡出也是靠降 alpha 实现的。
-     * 把 alpha 一起换掉的话，亮的那层会变暗、淡出也会失效。</p>
-     */
-    public static int recolour(int argb, int rgb) {
-        return (argb & 0xFF000000) | (rgb & 0xFFFFFF);
-    }
-
-    public static java.awt.Color recolour(java.awt.Color colour, int rgb) {
-        return new java.awt.Color((colour.getAlpha() << 24) | (rgb & 0xFFFFFF), true);
-    }
-
-    /**
-     * 这道非星空刀光该乘的颜色（-1 = 不处理）。
-     *
-     * <p>只认余烬自己生成的刀光：它们在颜色的高 8 位带着标记位，低 24 位是刀本身的颜色。
-     * 颜色是同步字段、客户端读得到；`getPersistentData()` 只在服务端，用不了（踩过一次）。</p>
-     */
-    private static int bladeColour(Entity entity) {
-        if (!(entity instanceof mods.flammpfeil.slashblade.entity.EntitySlashEffect slash)) {
-            return -1;
-        }
-        int raw = slash.getColor();
-        if ((raw & 0xFF000000) != 0x01000000) {
-            return -1;
-        }
-        return raw & 0xFFFFFF;
-    }
-
-    /** 渲染器问：这道非星空刀光该乘什么颜色（-1 = 不处理）。 */
-    public static int slashTint() {
-        return SLASH_COLOR.get();
-    }
-
-    /** 刀光渲染器开头调用：判定这次要画的刀光是不是纯银星放出来的。 */
+    /** 刀光渲染器开头调用：判定这次要画的是不是我们的刀光。 */
     public static void begin(Entity entity, float partialTicks) {
+        // 开光影时也照常判定：星空层不在这里画，而是记下来等光影合成之后重放（见 StarDeferred）。
         if (!isSilverStarSlash(entity)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
             BLUE_SLASH.set(Boolean.FALSE);
-            GOLD_SLASH.set(Boolean.FALSE);
-            // 不是我们的刀：走原版渲染，但要把它自己刀的颜色乘进去（原版那几层本身偏白）。
+            PALETTE.set(StarRender.FALLBACK_SILVER);
+            // 余烬的刀光：原版那几层本身偏白，光靠实体颜色出不来刀色，需要把刀色乘上去。
+            // 这不是给我们的刀上色，是补原版对自带标记的刀光不出色的问题。
             SLASH_COLOR.set(bladeColour(entity));
             return;
         }
@@ -172,13 +150,77 @@ public final class StarOverlay {
         FADE.set(fade(entity, partialTicks));
         // 完美次元斩额外斩出的那几刀由 SlashMarker 打了标记，这里跟着切换配色。
         BLUE_SLASH.set(entity.getPersistentData().getBoolean(BLUE_SLASH_TAG));
-        // 「金色星」放出来的刀光走金色那一份程序。
-        GOLD_SLASH.set(isGolden(entity));
+        // 「银色星 / 金色星」放出来的刀光用各自的调色板：颜色全从刀自己的 json 里来。
+        PALETTE.set(paletteOf(entity));
+    }
+
+    /** 这一团特效该用哪套星空调色板：先问放招的人手里那把刀，问不到就按标记兜底。 */
+    private static StarRender paletteOf(Entity entity) {
+        StarRender palette = StarRender.of(shooterOf(entity));
+        if (palette != null) {
+            return palette;
+        }
+        return markerPalette(entity);
+    }
+
+    /** 只按实体上的标记兜底（幻影剑、斩击波没有可靠的主手可查时用）。 */
+    private static StarRender markerPalette(Entity entity) {
+        return entity.getPersistentData().getBoolean(GOLD_TAG)
+                ? StarRender.FALLBACK_GOLD : StarRender.FALLBACK_SILVER;
+    }
+
+    /**
+     * 这道非星空刀光该乘的颜色（-1 = 不处理）。
+     *
+     * <p>只认余烬自己生成的刀光：它们在颜色的高 8 位带着标记位，低 24 位是刀本身的颜色。
+     * 颜色是同步字段、客户端读得到；{@code getPersistentData()} 只在服务端，用不了（踩过一次）。</p>
+     */
+    private static int bladeColour(Entity entity) {
+        if (!(entity instanceof EntitySlashEffect slash)) {
+            return -1;
+        }
+        int raw = slash.getColor();
+        if ((raw & 0xFF000000) != Ember.MARK) {
+            return -1;
+        }
+        // 原版那几层本来就亮，刀色乘上去后偏暗一档；余烬提亮 1/4 找回“火”的亮度。
+        int rgb = raw & 0xFFFFFF;
+        int r = Math.min(255, (int) (((rgb >> 16) & 0xFF) * 1.25F));
+        int g = Math.min(255, (int) (((rgb >> 8) & 0xFF) * 1.25F));
+        int b = Math.min(255, (int) ((rgb & 0xFF) * 1.25F));
+        return (r << 16) | (g << 8) | b;
+    }
+
+    /** 渲染器问：这道非星空刀光该乘什么颜色（-1 = 不处理）。 */
+    public static int slashTint() {
+        return SLASH_COLOR.get();
+    }
+
+    /** 金色星写进刀里的效果色（新旧两版都认，老刀里还留着旧值）。 */
+    private static final int GOLD_EFFECT = 0xE0BC65;
+    private static final int GOLD_EFFECT_LEGACY = 0xE8C46A;
+    /** 斩击波压到原亮度的几成。 */
+    private static final float GOLD_DRIVE = 0.55F;
+
+    /**
+     * 金色星的斩击波在原版那一路是「效果色 + 加法混合 + 满亮度」画的，
+     * 金色比原版的蓝亮好几倍，碰到光影包的 bloom 直接烧成一片白。
+     *
+     * <p>只在交给原版画的时候压亮度；走我们星空着色器的时候用不上这个颜色。</p>
+     */
+    public static int dimDrive(int argb) {
+        int rgb = argb & 0xFFFFFF;
+        if (rgb != GOLD_EFFECT && rgb != GOLD_EFFECT_LEGACY) {
+            return argb;
+        }
+        int r = (int) (((rgb >> 16) & 0xFF) * GOLD_DRIVE);
+        int g = (int) (((rgb >> 8) & 0xFF) * GOLD_DRIVE);
+        int b = (int) ((rgb & 0xFF) * GOLD_DRIVE);
+        return (argb & 0xFF000000) | (r << 16) | (g << 8) | b;
     }
 
     /** 渲染器结束时调用，把状态清掉，免得影响下一个实体。 */
     public static void end() {
-        DIM_GOLD.set(Boolean.FALSE);
         STARRY.set(Boolean.FALSE);
         SLASH_COLOR.set(-1);
     }
@@ -242,16 +284,7 @@ public final class StarOverlay {
 
     /** 放招的人手上是不是「金色星」。 */
     private static boolean isGoldenStarShooter(Entity shooter) {
-        if (!(shooter instanceof LivingEntity living)) {
-            return false;
-        }
-        ItemStack held = living.getMainHandItem();
-        if (held.isEmpty()) {
-            return false;
-        }
-        return held.getCapability(ItemSlashBlade.BLADESTATE)
-                .map(state -> GOLDEN_TRANSLATION_KEY.equals(state.getTranslationKey()))
-                .orElse(Boolean.FALSE);
+        return OurBlade.of(shooter).gold();
     }
 
     /** 三种特效各自的“是谁放的”取法不一样，这里统一一下。 */
@@ -273,15 +306,21 @@ public final class StarOverlay {
 
     /** 幻影剑渲染器开头调用：幻影剑是“凭空出现”的，所以前 6 tick 做个淡入。 */
     public static void beginSword(Entity entity, float partialTicks) {
+        if (shaderPackActive()) {
+            STARRY.set(Boolean.FALSE);
+            FADE.set(1.0F);
+            PALETTE.set(StarRender.FALLBACK_SILVER);
+            return;
+        }
         if (!(entity instanceof EntityAbstractSummonedSword sword) || !isStarry(sword)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
-            GOLD_SLASH.set(Boolean.FALSE);
+            PALETTE.set(StarRender.FALLBACK_SILVER);
             return;
         }
         STARRY.set(Boolean.TRUE);
-        // 金色星放的幻影剑走金色那一份程序（标记由 isStarry 在首次查询时写入）。
-        GOLD_SLASH.set(sword.getPersistentData().getBoolean(GOLD_TAG));
+        // 金色星放的幻影剑用金色调色板（标记由 isStarry 在首次查询时写入）。
+        PALETTE.set(markerPalette(sword));
         // 不透明度恒为 1：着色器上的不透明度是全局参数，顶点攒成一批一起提交，
         // 新剑要是从 0 淡入，那个低值会把同批里所有还活着的剑一起压暗，看着就是"一起闪一下"。
         FADE.set(1.0F);
@@ -289,13 +328,17 @@ public final class StarOverlay {
 
     /** 次元斩渲染器开头调用：次元斩前 25% 的寿命做淡入，让它像“张开”而不是“闪一下”。 */
     public static void beginDim(Entity entity, float partialTicks) {
+        if (shaderPackActive()) {
+            STARRY.set(Boolean.FALSE);
+            FADE.set(1.0F);
+            return;
+        }
         if (!(entity instanceof EntityJudgementCut dim) || !isStarry(dim)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
             return;
         }
         STARRY.set(Boolean.TRUE);
-        DIM_GOLD.set(isGoldenStarShooter(shooterOf(dim)));
         float lifetime = Math.max(1.0F, dim.getLifetime());
         float progress = Math.min(lifetime, dim.tickCount + partialTicks) / lifetime;
         float t = Math.min(1.0F, progress / 0.25F);
@@ -310,32 +353,30 @@ public final class StarOverlay {
      * 寿命末尾做淡出，理由同刀光：实体是按 tick 到点删的，最后一帧还留着一截透明度。</p>
      */
     public static void beginWave(Entity entity, float partialTicks) {
+        if (shaderPackActive()) {
+            STARRY.set(Boolean.FALSE);
+            FADE.set(1.0F);
+            PALETTE.set(StarRender.FALLBACK_SILVER);
+            return;
+        }
         if (!(entity instanceof EntityDrive drive) || !isStarry(drive)) {
             STARRY.set(Boolean.FALSE);
             FADE.set(1.0F);
-            GOLD_SLASH.set(Boolean.FALSE);
+            PALETTE.set(StarRender.FALLBACK_SILVER);
             return;
         }
         STARRY.set(Boolean.TRUE);
-        // 金色星放的斩击波走金色那一份程序（标记由 isStarry 在首次查询时写入）。
-        GOLD_SLASH.set(drive.getPersistentData().getBoolean(GOLD_TAG));
+        // 金色星放的斩击波用金色调色板（标记由 isStarry 在首次查询时写入）。
+        PALETTE.set(markerPalette(drive));
         float lifetime = Math.max(1.0F, drive.getLifetime());
         float progress = Math.min(lifetime, drive.tickCount + partialTicks) / lifetime;
         float t = Math.min(1.0F, (1.0F - progress) / 0.5F);
         FADE.set(t * t * (3.0F - 2.0F * t));
     }
 
-    /** 放招的人手上是不是捏着纯银星。 */    private static boolean isSilverStarShooter(Entity shooter) {
-        if (!(shooter instanceof LivingEntity living)) {
-            return false;
-        }
-        ItemStack held = living.getMainHandItem();
-        if (held.isEmpty()) {
-            return false;
-        }
-        return held.getCapability(ItemSlashBlade.BLADESTATE)
-                .map(state -> BLADE_TRANSLATION_KEY.equals(state.getTranslationKey()))
-                .orElse(Boolean.FALSE);
+    /** 放招的人手上是不是捏着纯银星。 */
+    private static boolean isSilverStarShooter(Entity shooter) {
+        return OurBlade.of(shooter) == OurBlade.SILVER;
     }
 
     /**
@@ -348,9 +389,21 @@ public final class StarOverlay {
         // 星点则由 cosmic 按空间方向算，于是四层虽然 UV 各不相同，看到的仍是同一片星空。
         boolean blue = BLUE_SLASH.get();
         RenderType type = blue
-                ? StarRenderTypes.cosmicArcBlue(texture)
-                : (GOLD_SLASH.get() ? StarRenderTypes.cosmicArcGold(texture)
-                        : StarRenderTypes.cosmicArc(texture));
+                ? StarRenderTypes.arcBlue(texture)
+                : StarRenderTypes.type(StarSlot.ARC, texture);
+        if (shaderPackActive()) {
+            if (shadowPass()) {
+                // 阴影那一趟用的是光照正交矩阵，记录下来的位姿重放会飞出屏幕，直接跳过。
+                return;
+            }
+            // 光影期间颜色写入被 Iris 关掉了，这里画不进去：把"用什么位姿、哪层"记下来，
+            // 等 AFTER_LEVEL 再原样重放（见 StarDeferred）。
+            Minecraft minecraft = Minecraft.getInstance();
+            float time = minecraft.level == null ? 0.0F : (float) minecraft.level.getGameTime() * 0.05F;
+            StarDeferred.record(stack, model, group, texture, light, pose,
+                    PALETTE.get(), FADE.get(), time, type);
+            return;
+        }
         drawWith(stack, model, group, texture, pose, buffers, light, type);
     }
 
@@ -358,8 +411,7 @@ public final class StarOverlay {
     public static void drawSword(ItemStack stack, WavefrontObject model, String group, ResourceLocation texture,
                                  PoseStack pose, MultiBufferSource buffers, int light) {
         drawWith(stack, model, group, texture, pose, buffers, light,
-                GOLD_SLASH.get() ? StarRenderTypes.cosmicPhantomGold(texture)
-                        : StarRenderTypes.cosmicPhantom(texture));
+                StarRenderTypes.type(StarSlot.PHANTOM, texture));
     }
 
     /**
@@ -371,8 +423,7 @@ public final class StarOverlay {
     public static void drawWave(ItemStack stack, WavefrontObject model, String group, ResourceLocation texture,
                                 PoseStack pose, MultiBufferSource buffers, int light) {
         drawWith(stack, model, group, texture, pose, buffers, light,
-                GOLD_SLASH.get() ? StarRenderTypes.cosmicWaveGold(texture)
-                        : StarRenderTypes.cosmicWave(texture));
+                StarRenderTypes.type(StarSlot.WAVE, texture));
     }
 
     /** 次元斩的球：原版贴图是纯白，形状完全靠模型几何——这颗球已经退回原版，这里保留给以后备用。 */
@@ -389,7 +440,7 @@ public final class StarOverlay {
      * 所以没有“属于谁”可以查，只能看本地玩家手上拿的是什么。</p>
      */
     public static boolean lockonStarry() {
-        return !vanillaLook() && isSilverStarShooter(Minecraft.getInstance().player);
+        return !shaderPackActive() && OurBlade.of(Minecraft.getInstance().player).starry();
     }
 
     /** 圆环的三个组都用同一套星空画，形状仍由原版贴图的 alpha 决定。 */
@@ -399,9 +450,14 @@ public final class StarOverlay {
         // 混用 cosmic_arc 的话，刀光淡出到 0 的那一帧圆环会跟着熄一下（uniform 是程序级状态）。
         Minecraft minecraft = Minecraft.getInstance();
         float time = minecraft.level == null ? 0.0F : (float) minecraft.level.getGameTime() * 0.05F;
-        StarShaders.updateLockon(time);
+        // 圆环没有“属于谁”可查，只能看本地玩家手上拿的是哪把刀。
+        StarRender palette = StarRender.of(Minecraft.getInstance().player);
+        if (palette == null) {
+            palette = StarRender.FALLBACK_SILVER;
+        }
+        StarShaders.updateLockon(time, palette);
 
-        RenderType renderType = StarRenderTypes.cosmicLockon(texture);
+        RenderType renderType = StarRenderTypes.type(StarSlot.LOCKON, texture);
         renderGroup(stack, model, group, texture, pose, buffers, light, renderType);
         flush(buffers, renderType);
     }
@@ -419,41 +475,16 @@ public final class StarOverlay {
         float time = minecraft.level == null ? 0.0F : (float) minecraft.level.getGameTime() * 0.05F;
 
         float alpha = WIND_ALPHA.get();
-        boolean gold = GOLD_SLASH.get();
-        if (gold) {
-            // 金色星：换一份金色片元，参数完全一样（tint 是程序级状态，共用会把纯银星也染金）。
-            StarShaders.updateWindGold(time, FADE.get() * alpha);
-        } else {
-            // 色调固定给白：刀光那层 cosmic 的 tint 就是白，风纹要保持“同一种颜色”，
-            // 原版的颜色值只用来取这一道自身的透明度（每一道的浓淡不同）。
-            StarShaders.updateWind(time, FADE.get() * alpha, 1.0F, 1.0F, 1.0F);
-        }
+        // 调色板决定这一片星域是什么颜色，要不要再乘上每一道自己的颜色由调色板说了算。
+        StarShaders.updateWind(time, FADE.get() * alpha, PALETTE.get(), 1.0F, 1.0F, 1.0F);
 
-        RenderType renderType = gold
-                ? StarRenderTypes.cosmicWindGold(texture)
-                : StarRenderTypes.cosmicWind(texture);
+        RenderType renderType = StarRenderTypes.type(StarSlot.WIND, texture);
         renderGroup(stack, model, group, texture, pose, buffers, light, renderType);
 
         // 每一道单独提交：色调和透明度是每道自己的，混在一批里会被最后一个覆盖。
         if (buffers instanceof MultiBufferSource.BufferSource source) {
             source.endBatch(renderType);
         }
-    }
-
-    /**
-     * 这团次元斩的球该用什么颜色。
-     *
-     * <p>球走的是 {@code renderOverridedReverseLuminous}（反色那条路），所以这里给的是
-     * <b>目标颜色的反相</b>：反色之后才会变回我们要的青 / 金。</p>
-     *
-     * @return 要给球设置的颜色；-1 表示这团不是我们的，按原版处理
-     */
-    public static int dimSphereColour() {
-        if (!STARRY.get()) {
-            return -1;
-        }
-        int target = DIM_GOLD.get() ? GOLD : CYAN;
-        return (~target) & 0xFFFFFF;
     }
 
     /** 当前这一道风纹自身的不透明度（0~1，来自原版设置的颜色值里的 alpha）。 */
@@ -472,16 +503,14 @@ public final class StarOverlay {
 
     /** 当前这一刀要不要用深蓝配色，跟风纹统一。 */
     private static final ThreadLocal<Boolean> BLUE_SLASH = ThreadLocal.withInitial(() -> Boolean.FALSE);
-    /** 这团特效是不是「金色星」放的（决定刀光用金色那份着色器）。同一个实体只判定一次。 */
+    /** 这团特效是不是「金色星」放的（决定刀光用金色那一份着色器）。同一个实体只判定一次。 */
     private static final String GOLD_TAG = "silverstar_gold_starry";
-    private static final ThreadLocal<Boolean> GOLD_SLASH = ThreadLocal.withInitial(() -> Boolean.FALSE);
-    /** 这团次元斩是不是金色星放的（决定球和风纹用哪个颜色）。 */
-    private static final ThreadLocal<Boolean> DIM_GOLD = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
-    /** 金色刀光的颜色（0xE8C46A），球和风纹都往它靠。 */
-    public static final int GOLD = 0xE8C46A;
+    /** 当前这一团特效用哪套调色板（决定这一片星空染成什么色）。每种实体的 {@code begin*} 各置一次。 */
+    private static final ThreadLocal<StarRender> PALETTE =
+            ThreadLocal.withInitial(() -> StarRender.FALLBACK_SILVER);
 
-    /** 非星空刀光要乘上去的刀色（-1 = 不处理）。 */
+    /** 非星空刀光要乘上去的刀色（-1 = 不处理）。只有写着标记位的余烬刀光会被乘。 */
     private static final ThreadLocal<Integer> SLASH_COLOR = ThreadLocal.withInitial(() -> -1);
 
     /** 这几个组会被拦下来重画：刀身、破损刀身、刀鞘。图标和附魔光保持原样。 */
@@ -576,7 +605,12 @@ public final class StarOverlay {
         // 开关只管"整把刀"，刀刃永远走下面的两遍绘制，所以这把刀的任何状态都能看到星空刃。
         // 测试刀用自己那两张按湮灭之刃 UV 切的贴图，但同样只让刀刃是星空。
         boolean testBlade = TEST_BLADE_KEY.equals(key);
-        boolean golden = GOLDEN_TRANSLATION_KEY.equals(key);
+        // 刀身用哪套调色板：刀自己的 json 说了算（测试刀不在表里，按银的那套画）。
+        StarRender palette = StarRender.of(stack);
+        if (palette == null) {
+            palette = StarRender.FALLBACK_SILVER;
+        }
+        boolean goldBlade = OurBlade.of(stack).gold();
         boolean whole = SSConfig.bladeStarRender() && !testBlade;
         if (shaderPackActive()) {
             // 光影下 Iris 接管核心着色器，我们的 cosmic 程序不会被调用，第二遍等于没画。
@@ -599,21 +633,16 @@ public final class StarOverlay {
             // 不能走 StarShaders.update()，否则刀光淡到 0 时会把刀身一起写暗。
             Minecraft minecraft = Minecraft.getInstance();
             float time = minecraft.level == null ? 0.0F : (float) minecraft.level.getGameTime() * 0.05F;
-            if (golden) {
-                // 金色星用自己那份程序：金色写在 cosmic_gold.json 的 tint 默认值里，
-                // 和刀身共用一份的话会把纯银星也一起染黄。
-                StarShaders.updateBladeGold(time);
-            } else {
-                StarShaders.updateBlade(time);
-            }
+            // 刀身那份程序不透明度恒为 1；颜色按这把刀的调色板灌进去。
+            StarShaders.updateBlade(time, palette);
             if (whole) {
                 // 开关打开：整组一次画成星空，刀身、刀柄、刀鞘一起。
                 drawWith(stack, model, target, texture, pose, buffers, light,
-                        golden ? StarRenderTypes.cosmicGold(texture) : StarRenderTypes.cosmic(texture));
+                        StarRenderTypes.type(StarSlot.BLADE, texture), 1.0F, palette);
             } else {
                 // 开关关闭（或测试刀）：只让刀刃是星空，刀柄和护手保持原贴图。
                 ResourceLocation bodyTex = testBlade ? TEST_BODY_TEXTURE
-                        : (golden ? GOLDEN_BODY_TEXTURE : BLADE_BODY_TEXTURE);
+                        : (goldBlade ? GOLDEN_BODY_TEXTURE : BLADE_BODY_TEXTURE);
                 ResourceLocation maskTex = testBlade ? TEST_MASK_TEXTURE : BLADE_MASK_TEXTURE;
                 // 第一遍：原版混合，贴图里刀刃那条已被挖空，所以只出刀柄、护手。
                 RenderType bodyType = BladeRenderState.getSlashBladeBlend(bodyTex);
@@ -622,7 +651,7 @@ public final class StarOverlay {
                 flush(buffers, bodyType);
                 // 第二遍：遮罩贴图的 alpha 只在刀刃那条上，星点也只落在刀刃。
                 drawWith(stack, model, target, maskTex, pose, buffers, light,
-                        golden ? StarRenderTypes.cosmicGold(maskTex) : StarRenderTypes.cosmic(maskTex));
+                        StarRenderTypes.type(StarSlot.BLADE, maskTex), 1.0F, palette);
             }
         } finally {
             FADE.set(previousFade);
@@ -664,11 +693,23 @@ public final class StarOverlay {
     private static void drawWith(ItemStack stack, WavefrontObject model, String group, ResourceLocation texture,
                                  PoseStack pose, MultiBufferSource buffers, int light,
                                  RenderType renderType, float opacity) {
+        drawWith(stack, model, group, texture, pose, buffers, light, renderType, opacity, PALETTE.get());
+    }
+
+    /**
+     * 同上，但调色板也自己指定。
+     *
+     * <p>物品渲染这条路上 {@link #PALETTE} 是空的（它只在特效里被设置过），
+     * 如果还让它去取，两把刀的刀身就会用同一个残留调色板——先画的那把是青的，另一把也跟着变青。</p>
+     */
+    private static void drawWith(ItemStack stack, WavefrontObject model, String group, ResourceLocation texture,
+                                 PoseStack pose, MultiBufferSource buffers, int light,
+                                 RenderType renderType, float opacity, StarRender palette) {
         Minecraft minecraft = Minecraft.getInstance();
         // 游戏时间推进星空漂移；乘 0.05 只是把“每 tick”换成着色器里好用的量级。
         float time = minecraft.level == null ? 0.0F : (float) minecraft.level.getGameTime() * 0.05F;
 
-        StarShaders.update(time, opacity);
+        StarShaders.update(time, opacity, palette);
 
         renderGroup(stack, model, group, texture, pose, buffers, light, renderType);
 

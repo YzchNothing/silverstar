@@ -1,4 +1,4 @@
-﻿{
+{
   "enchantments": [
     {
       "id": "minecraft:power",
@@ -29,6 +29,15 @@
   "render": {
     "model": "slashblade:model/named/sange/sange.obj",
     "texture": "silverstar:model/silver_star.png",
-    "carry_type": "katana"
+    "carry_type": "katana",
+    "summon_sword_color": 14015715,
+    "star_render": {
+      "family": "silver",
+      "bg_base": [0.1, 0.225, 0.3],
+      "bg_amp": [0.0, 0.075, 0.05],
+      "bg_phase": [0.0, 0.0, 1.5707964],
+      "star_base": [0.4, 0.6, 0.7],
+      "star_jitter": [0.3, 0.4, 0.3]
+    }
   }
 }

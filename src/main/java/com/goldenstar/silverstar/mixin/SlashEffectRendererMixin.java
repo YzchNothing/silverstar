@@ -46,9 +46,6 @@ public abstract class SlashEffectRendererMixin {
     /** 绘制调用之二：自发光那一路。 */
     private static final String LUMINOUS_TARGET = SSDescriptors.LUMINOUS;
 
-    /** 原版设置当层颜色的调用。 */
-    private static final String SET_COL_INT = SSDescriptors.SET_COL_INT;
-
     /** 渲染开始：让 StarOverlay 判定这次画的是不是纯银星的刀光，并重置“只画一层”的计数。 */
     @Inject(method = RENDER_IMPL, at = @At("HEAD"))
     private void silverstar$begin(EntitySlashEffect entity, float entityYaw, float partialTicks,
@@ -65,23 +62,19 @@ public abstract class SlashEffectRendererMixin {
         StarOverlay.end();
     }
 
+    /** 原版设置当层颜色的调用。 */
+    private static final String SET_COL_INT = SSDescriptors.SET_COL_INT;
+
     /**
-     * 开了光影时不画星空，保留原版这一层，但把颜色换成青色。
+     * 原版给每层设颜色。
      *
-     * <p>只换 RGB，alpha 不能动——原版拿 alpha 当“这一层多亮”以及淡出的通道，换了会出怪事。</p>
-     *
-     * <p>其余情况一律原样放行：刀光的颜色应当由刀本身决定（每把刀在状态里存着自己的效果色），
-     * 渲染端不要再插手。</p>
+     * <p>一般情况原样放行，颜色由刀本身决定。只有余烬的刀光例外：原版那几层偏白，
+     * 单靠实体颜色出不来刀色，这里把刀自己的颜色乘上去。</p>
      */
     @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE", target = SET_COL_INT))
     private void silverstar$setCol(int argb) {
-        if (StarOverlay.vanillaLook()) {
-            BladeRenderState.setCol(StarOverlay.recolour(argb, StarOverlay.CYAN));
-        } else {
-            // 非星空刀光（别的刀放余烬）：原版这几层本身偏白，把刀自己的颜色乘上去。
-            int tint = StarOverlay.slashTint();
-            BladeRenderState.setCol(tint < 0 ? argb : multiply(argb, tint));
-        }
+        int tint = StarOverlay.slashTint();
+        BladeRenderState.setCol(tint < 0 ? argb : multiply(argb, tint));
     }
 
     /** 把颜色的 RGB 三个通道按刀色缩放，alpha 原样保留。 */
@@ -98,7 +91,7 @@ public abstract class SlashEffectRendererMixin {
     private void silverstar$colorWrite(ItemStack stack, WavefrontObject model, String group,
                                        ResourceLocation texture, PoseStack pose,
                                        MultiBufferSource buffers, int light) {
-        if (StarOverlay.active() && !StarOverlay.vanillaLook()) {
+        if (StarOverlay.active()) {
             StarOverlay.draw(stack, model, group, texture, pose, buffers, light);
         } else {
             BladeRenderState.renderOverridedColorWrite(stack, model, group, texture, pose, buffers, light);
@@ -110,7 +103,7 @@ public abstract class SlashEffectRendererMixin {
     private void silverstar$luminous(ItemStack stack, WavefrontObject model, String group,
                                      ResourceLocation texture, PoseStack pose,
                                      MultiBufferSource buffers, int light) {
-        if (StarOverlay.active() && !StarOverlay.vanillaLook()) {
+        if (StarOverlay.active()) {
             StarOverlay.draw(stack, model, group, texture, pose, buffers, light);
         } else {
             BladeRenderState.renderOverridedLuminous(stack, model, group, texture, pose, buffers, light);

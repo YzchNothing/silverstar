@@ -47,12 +47,24 @@ public abstract class DriveRendererMixin {
         StarOverlay.end();
     }
 
+    /**
+     * 交给原版画的时候，把金色星那道斩击波的亮度压下来。
+     *
+     * <p>原版是 {@code setCol((getColor() & 0xFFFFFF) | alpha)} + 加法混合 + 满亮度，
+     * 金色比默认的蓝亮得多，光影的 bloom 会把它烧成一片白。</p>
+     */
+    @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE",
+            target = "Lmods/flammpfeil/slashblade/client/renderer/util/BladeRenderState;setCol(I)V"))
+    private void silverstar$dimDrive(int argb) {
+        BladeRenderState.setCol(StarOverlay.active() ? argb : StarOverlay.dimDrive(argb));
+    }
+
     /** 那唯一的一次绘制：自己是纯银星就换星空，否则原样转发。 */
     @Redirect(method = RENDER_IMPL, at = @At(value = "INVOKE", target = LUMINOUS_TARGET))
     private void silverstar$wave(ItemStack stack, WavefrontObject model, String group,
                                  ResourceLocation texture, PoseStack pose,
                                  MultiBufferSource buffers, int light) {
-        if (StarOverlay.active() && !StarOverlay.vanillaLook()) {
+        if (StarOverlay.active()) {
             StarOverlay.drawWave(stack, model, group, texture, pose, buffers, light);
         } else {
             BladeRenderState.renderOverridedLuminous(stack, model, group, texture, pose, buffers, light);

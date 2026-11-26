@@ -10,298 +10,163 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * 加载星空着色器，一共四份。
+ * 星空着色器程序的登记表和参数刷新。
  *
- * <p>四份的 {@code .vsh} / {@code .fsh} 源码是同一套，区别只在各自的 {@code .json} 里：默认亮度不同、
- * 默认色调不同。所以刀光、次元斩的球、风纹、幻影剑可以用同一个算法画出四种观感。</p>
+ * <p><b>为什么一个槽位要一份独立程序：</b>uniform（画之前塞给着色器的参数）是跟着程序走的，
+ * 而顶点是攒成一批最后统一提交，提交时才按当前 uniform 算。所以刀光淡到 0 的那一帧，
+ * 跟它共用程序的圆环也会一起熄。于是「槽位各一份程序」，谁也不会改到别人。</p>
  *
- * <p><b>为什么必须分成四个程序，而不是一个程序中途改参数：</b>着色器的 uniform（可以理解为“画之前塞给
- * 着色器的参数”）是跟着程序走的，而同一批顶点是在最后统一提交的，提交时才真正按 uniform 去算。
- * 一个程序没法在一批里既画暗的球又画亮的刀光——后设的值会把前面的覆盖掉。</p>
+ * <p><b>银和金的差别不再靠两份程序：</b>以前金的是另一套 {@code .fsh}，颜色写死在 json 默认值里，
+ * 等于把「染成什么色」也钉死在程序上。现在只有一套程序，五组颜色参数（底色中心 / 振幅 / 相位、
+ * 星点基色 / 抖动）全部走 uniform，由 {@link StarRender} 在画之前灌进去。</p>
+ *
+ * <p>另外两份不属于任何槽位的程序还留在这里：{@code stars_dim}（次元斩的球，亮度压得极低）
+ * 和 {@code cosmic_arc_blue}（完美次元斩额外斩出的几刀，走深蓝）。</p>
  */
 @Mod.EventBusSubscriber(modid = Silverstar.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class StarShaders {
     /** 次元斩中间那颗球，亮度压得很低，看起来像一个洞。 */
     private static final ResourceLocation ID_DIM = new ResourceLocation(Silverstar.MODID, "stars_dim");
-    /**
-     * 刀身专用的那一份：不是从贴图里采样星点，而是把星点当成 16x16 的点阵字形来画，
-     * 观感跟原版「寰宇支配之剑」一致。具体原理写在 {@code cosmic.fsh} 的头部注释里。
-     */
-    private static final ResourceLocation ID_COSMIC = new ResourceLocation(Silverstar.MODID, "cosmic");
-    /**
-     * 刀光专用的 cosmic：和刀身同一套算法，但亮度压到约四分之一。
-     *
-     * <p>因为原版一道刀光要画四层，四层叠同一片星空，不压低就是四倍亮度，糊成一片白。</p>
-     */
-    private static final ResourceLocation ID_COSMIC_ARC = new ResourceLocation(Silverstar.MODID, "cosmic_arc");
+
     /** 完美次元斩额外斩出的那几刀：和风纹同一个深蓝。 */
-    private static final ResourceLocation ID_COSMIC_LOCKON =
-            new ResourceLocation(Silverstar.MODID, "cosmic_lockon");
-
-    private static final ResourceLocation ID_COSMIC_ARC_BLUE =
+    private static final ResourceLocation ID_ARC_BLUE =
             new ResourceLocation(Silverstar.MODID, "cosmic_arc_blue");
-    /** 幻影剑：星点稀疏版（层数从 16 砍到 4），深紫。 */
-    private static final ResourceLocation ID_COSMIC_PHANTOM =
-            new ResourceLocation(Silverstar.MODID, "cosmic_phantom");
-    /**
-     * 「金色星」的幻影剑：和 {@link #ID_COSMIC_PHANTOM} 同一套参数，
-     * 片元换成金色那份的稀疏版（{@code silverstar:cosmic_gold_sparse}）。
-     *
-     * <p>不共用的理由和刀光、风纹一样：{@code tint} 是程序级默认值，
-     * 共用会把纯银星那批深紫幻影剑也一起染成金色。</p>
-     */
-    private static final ResourceLocation ID_COSMIC_PHANTOM_GOLD =
-            new ResourceLocation(Silverstar.MODID, "cosmic_phantom_gold");
-    /**
-     * 次元斩外圈那五道风纹：和刀光同一套 cosmic，但每一道的颜色、透明度都不一样，
-     * 所以单独一份程序，好在每次绘制前把自己那一道的色调塞进去。
-     */
-    private static final ResourceLocation ID_COSMIC_WIND =
-            new ResourceLocation(Silverstar.MODID, "cosmic_wind");
-    /**
-     * 金色星专属的那一份风纹：和 {@link #ID_COSMIC_WIND} 同一套参数，
-     * 只是片元换成金色那份（{@code silverstar:cosmic_gold}）。
-     *
-     * <p>不共用的原因和刀光一样：{@code tint} / 亮度是程序级状态，共用会把纯银星的青色风纹也染成金色。</p>
-     */
-    private static final ResourceLocation ID_COSMIC_WIND_GOLD =
-            new ResourceLocation(Silverstar.MODID, "cosmic_wind_gold");
-    /**
-     * 波刀龙胆这类“斩击波”（{@code EntityDrive}）用的 cosmic。
-     *
-     * <p>它只有一层，不像刀光要叠四层，所以亮度比刀光那份（0.26）再低一点，
-     * 免得一大片飞过去糊成白墙。</p>
-     */
-    private static final ResourceLocation ID_COSMIC_WAVE =
-            new ResourceLocation(Silverstar.MODID, "cosmic_wave");
-    /** 「金色星」的斩击波：和 {@link #ID_COSMIC_WAVE} 同一套参数，片元换成金色那份的 star-only 版。 */
-    private static final ResourceLocation ID_COSMIC_WAVE_GOLD =
-            new ResourceLocation(Silverstar.MODID, "cosmic_wave_gold");
-    /**
-     * 左臂星空用的那一份：和刀身同一套算法，但透明度只由遮罩贴图的 alpha 决定，
-     * 所以单独开一份程序，免得别人改 {@code opacity} 时把手臂一起改掉。
-     */
-    private static final ResourceLocation ID_COSMIC_ARM =
-            new ResourceLocation(Silverstar.MODID, "cosmic_arm");
 
-    /** 左臂星空壳的金色版（片元是 cosmic_gold，其余和青色那份一样）。 */
-    private static final ResourceLocation ID_COSMIC_ARM_GOLD =
-            new ResourceLocation(Silverstar.MODID, "cosmic_arm_gold");
-    /**
-     * 「金色星」刀身专用的那一份：同一套星空算法，只把 {@code tint} 换成金色、亮度抬一点。
-     * 单独开一份，是因为 tint 是程序级的默认值 —— 和刀身共用的话，两把刀会一起变金。
-     */
-    private static final ResourceLocation ID_COSMIC_GOLD =
-            new ResourceLocation(Silverstar.MODID, "cosmic_gold");
-    /** 「金色星」的刀光：同一套金色 fragment，亮度按刀光压低（刀光要叠四层）。 */
-    private static final ResourceLocation ID_COSMIC_ARC_GOLD =
-            new ResourceLocation(Silverstar.MODID, "cosmic_arc_gold");
-
-    private static ShaderInstance dim;
-    private static ShaderInstance cosmic;
-    private static ShaderInstance cosmicArc;
-    private static ShaderInstance cosmicArcBlue;
-    private static ShaderInstance cosmicLockon;
-    private static ShaderInstance cosmicPhantom;
-    private static ShaderInstance cosmicPhantomGold;
-    private static ShaderInstance cosmicWind;
-    private static ShaderInstance cosmicWindGold;
-    private static ShaderInstance cosmicWave;
-    private static ShaderInstance cosmicWaveGold;
-    private static ShaderInstance cosmicArm;
-    private static ShaderInstance cosmicArmGold;
-    private static ShaderInstance cosmicGold;
-    private static ShaderInstance cosmicArcGold;
-
-    /** 幻影剑的不透明度增益：加法混合下它偏透，乘一下才像实体剑。 */
-    private static final float PHANTOM_OPACITY_GAIN = 1.8F;
+    /** 程序 id → 已加载的着色器。启动时被 {@link #onRegisterShaders} 填满。 */
+    private static final Map<ResourceLocation, ShaderInstance> PROGRAMS = new HashMap<>();
 
     private StarShaders() {
     }
 
+    /** 按程序 id 取着色器；还没加载好时返回 null（RenderType 的 supplier 允许这样）。 */
+    public static ShaderInstance get(ResourceLocation id) {
+        return PROGRAMS.get(id);
+    }
+
+    /** 某槽位用的那套程序。 */
+    public static ShaderInstance get(StarSlot slot) {
+        return PROGRAMS.get(new ResourceLocation(Silverstar.MODID, slot.program()));
+    }
+
     /** 次元斩中间那颗球（亮度压得极低）。 */
     public static ShaderInstance dim() {
-        return dim;
+        return PROGRAMS.get(ID_DIM);
     }
 
-    public static ShaderInstance cosmic() {
-        return cosmic;
-    }
-
-    /** 刀光那层用的 cosmic（亮度已压低，见 {@link #ID_COSMIC_ARC}）。 */
-    public static ShaderInstance cosmicArc() {
-        return cosmicArc;
-    }
-
-    /** 锁定目标的圆环专用：单独一份程序，不和刀光抢 uniform。 */
-    public static ShaderInstance cosmicLockon() {
-        return cosmicLockon;
-    }
-
-    /** 完美次元斩额外斩击用的 cosmic：和风纹同一个深蓝。 */
-    public static ShaderInstance cosmicArcBlue() {
-        return cosmicArcBlue;
-    }
-
-    /** 幻影剑用的 cosmic：星点稀疏、深紫。 */
-    public static ShaderInstance cosmicPhantom() {
-        return cosmicPhantom;
-    }
-
-    /** 「金色星」的幻影剑：同样稀疏，但是金色。 */
-    public static ShaderInstance cosmicPhantomGold() {
-        return cosmicPhantomGold;
-    }
-
-    /** 次元斩风纹用的 cosmic。 */
-    public static ShaderInstance cosmicWind() {
-        return cosmicWind;
-    }
-
-    /** 金色星那边的风纹。 */
-    public static ShaderInstance cosmicWindGold() {
-        return cosmicWindGold;
-    }
-
-    /** 斩击波（波刀龙胆这类 drive 招式）用的 cosmic。 */
-    public static ShaderInstance cosmicWave() {
-        return cosmicWave;
-    }
-
-    /** 「金色星」的斩击波。 */
-    public static ShaderInstance cosmicWaveGold() {
-        return cosmicWaveGold;
-    }
-
-    /** 左臂星空用的 cosmic。 */
-    public static ShaderInstance cosmicArm() {
-        return cosmicArm;
-    }
-
-    public static ShaderInstance cosmicArmGold() {
-        return cosmicArmGold;
-    }
-
-    /** 「金色星」刀身用的 cosmic（金色调）。 */
-    public static ShaderInstance cosmicGold() {
-        return cosmicGold;
+    /** 完美次元斩额外斩出的那几刀用的深蓝 cosmic。 */
+    public static ShaderInstance arcBlue() {
+        return PROGRAMS.get(ID_ARC_BLUE);
     }
 
     /**
-     * 刷新会动的参数。每次画之前调一次，等这一批顶点真正提交时值就在那儿了。
+     * 刷新所有「跟刀光一起淡出」的槽位。
      *
      * @param time    游戏时间，驱动星空缓慢漂移
-     * @param opacity 当前这一层的不透明度，由淡入淡出算出来
+     * @param opacity 当前这一层的淡出值，实际不透明度由 {@link StarSlot#opacity(float)} 换算
+     * @param palette 这一刀的颜色，null 时按纯银星兜底
      */
-    public static void update(float time, float opacity) {
-        // 球是实心的，星域铺得太开看着像贴纸，收紧一点更像“球里面是星空”
-        apply(dim, time, opacity, 1.9F);
-        // cosmic 那份是刀身专用的，不走这里——见 updateBlade()。
-        apply(cosmicArc, time, opacity, 1.15F);
-        apply(cosmicArcBlue, time, opacity, 1.15F);
-        // 幻影剑的星域放大一点：星点稀疏之后，铺得开才像“剑上挂着几颗星”
-        // 不透明度额外给一档增益：加法混合下它本来偏透，乘一下看着才像实体剑，
-        // 淡入也在一帧内到位，不会有一段“很淡”的过渡。
-        apply(cosmicPhantom, time, Math.min(1.0F, opacity * PHANTOM_OPACITY_GAIN), 1.45F);
-        // 「金色星」的幻影剑：参数和上面完全一样，只换了一份金色片元。
-        apply(cosmicPhantomGold, time, Math.min(1.0F, opacity * PHANTOM_OPACITY_GAIN), 1.45F);
-        apply(cosmicWind, time, opacity, 1.15F);
-        apply(cosmicWave, time, opacity, 1.15F);
-        // 「金色星」的斩击波：同样一层、同样亮度，只是片元是金色。
-        apply(cosmicWaveGold, time, opacity, 1.15F);
-        // 「金色星」的刀光。和 arc 分开一份，理由同刀身：程序级 tint 是共享状态，
-        // 共用的话纯银星的刀光也会被染成金色。
-        apply(cosmicArcGold, time, opacity, 1.15F);
-    }
-
-    /**
-     * 刷新刀身那一份的动画参数。
-     *
-     * <p><b>为什么不和特效共用 {@link #update}：</b>uniform 是每份程序各存一份，但会一直留到下一次有人写它。
-     * 特效那一套每帧都在改不透明度（刀光要淡出），刀的星空不需要淡出——两拨人往同一份程序上写，
-     * 结果就是刀光淡到 0 的那一帧，刀身上的星空也被写成 0，看着像“跟着刀光一起消失”。
-     * 所以刀身单独一份参数，不透明度恒为 1，谁也别来改。</p>
-     */
-    public static void updateBlade(float time) {
-        apply(cosmic, time, 1.0F, 1.15F);
-    }
-
-    /**
-     * 刷新「金色星」刀身那一份的参数。
-     *
-     * <p>和 {@link #updateBlade} 完全一样，只是换了一份程序 —— 金色写在
-     * {@code cosmic_gold.json} 的 {@code tint} 默认值里，不需要每帧设。
-     * 两把刀各用各的程序，谁也不会把谁的色调改掉。</p>
-     */
-    public static void updateBladeGold(float time) {
-        apply(cosmicGold, time, 1.0F, 1.15F);
-    }
-
-    /**
-     * 刷新左臂那一份的参数。
-     *
-     * <p>{@code opacity} 恒为 1：手臂上"上淡下浓"是靠遮罩贴图的 alpha 做的，
-     * 这里再乘一个系数会把梯度压扁。</p>
-     */
-    /**
-     * 给锁定圆环刷参数。
-     *
-     * <p>它<b>不走</b> {@code update(time, opacity)}：那个方法的 opacity 是刀光的淡出值，
-     * 而圆环和刀光一旦共用程序，刀光淡到 0 的那一帧圆环就跟着消失（再下一帧又回来，看着像闪）。
-     * 单独一份程序 + 固定 1.0，两边彻底不打架。</p>
-     */
-    public static void updateLockon(float time) {
-        apply(cosmicLockon, time, 1.0F, 1.15F);
-    }
-
-    /**
-     * 给左臂星空刷参数。
-     *
-     * <p>最后一个数是星域的"缩放"：u/v 都乘它，放大等于格子变多 → 星星更小更密。
-     * 手臂只有 20×40 像素，用刀身那个 1.10 会让星点看着像纸屑，所以这里调到 2.4。</p>
-     */
-    public static void updateArm(float time) {
-        apply(cosmicArm, time, 1.0F, 2.4F);
-    }
-
-    /** 金色版的左臂星空：外部缩放和青色那份保持一致，只换了颜色。 */
-    public static void updateArmGold(float time) {
-        apply(cosmicArmGold, time, 1.0F, 2.4F);
-    }
-
-    /**
-     * 给风纹那边的 cosmic 单独刷参数，顺便把这一道的色调塞进去。
-     *
-     * <p>原版风纹是循环画的五道，每一道的颜色和透明度都不同，都靠画之前设的那个颜色值区分。
-     * 颜色值我们读不到（在 {@code BladeRenderState} 的私有静态字段里），所以在 mixin 拦下设置动作时
-     * 顺手存一份，这里再用 tint 还原。</p>
-     *
-     * @param opacity 已经乘过这一道自身 alpha 的不透明度
-     */
-    public static void updateWind(float time, float opacity, float red, float green, float blue) {
-        apply(cosmicWind, time, opacity, 1.15F);
-        if (cosmicWind != null) {
-            set(cosmicWind, "tint", red, green, blue);
+    public static void update(float time, float opacity, StarRender palette) {
+        StarRender colours = palette == null ? StarRender.FALLBACK_SILVER : palette;
+        // 球是实心的，星域铺得太开看着像贴纸，收紧一点更像"球里面是星空"
+        apply(dim(), time, opacity, 1.9F, StarRender.FALLBACK_SILVER, null);
+        apply(arcBlue(), time, opacity, 1.15F, StarRender.FALLBACK_SILVER, null);
+        for (StarSlot slot : StarSlot.values()) {
+            if (!slot.fades()) {
+                continue;
+            }
+            apply(slot, time, slot.opacity(opacity), colours, null);
         }
     }
 
-    /** 金色星的风纹：参数和纯银星那份完全一样，只是换了一份金色片元。 */
-    public static void updateWindGold(float time, float opacity) {
-        apply(cosmicWindGold, time, opacity, 1.15F);
+    /**
+     * 刷新刀身那一份的参数。
+     *
+     * <p><b>为什么不和特效共用 {@link #update}：</b>特效那一套每帧都在改不透明度（刀光要淡出），
+     * 刀的星空不需要淡出——两拨人往同一份程序上写，结果就是刀光淡到 0 的那一帧，
+     * 刀身上的星空也被写成 0，看着像"跟着刀光一起消失"。所以刀身不透明度恒为 1，谁也别来改。</p>
+     */
+    public static void updateBlade(float time, StarRender palette) {
+        applySteady(StarSlot.BLADE, time, palette);
     }
 
     /**
-     * 把参数塞进某一份着色器。
+     * 刷新锁定圆环的参数。
+     *
+     * <p>它也不走 {@link #update}：那个方法的 opacity 是刀光的淡出值，圆环跟着走的话，
+     * 挥刀最后一帧会闪一下。单独一份程序 + 固定 1.0，两边彻底不打架。</p>
+     */
+    public static void updateLockon(float time, StarRender palette) {
+        applySteady(StarSlot.LOCKON, time, palette);
+    }
+
+    /**
+     * 刷新左臂星空的参数。
+     *
+     * <p>{@code opacity} 恒为 1：手臂上"上淡下浓"是靠遮罩贴图的 alpha 做的，
+     * 这里再乘一个系数会把梯度压扁。缩放 2.4 来自 {@link StarSlot#ARM}。</p>
+     */
+    public static void updateArm(float time, StarRender palette) {
+        applySteady(StarSlot.ARM, time, palette);
+    }
+
+    /**
+     * 给风纹那一摊单独刷参数。
+     *
+     * <p>原版风纹是循环画的五道，每一道的颜色和透明度都不同，都靠画之前设的那个颜色值区分。
+     * 颜色值在 {@code BladeRenderState} 的私有静态字段里读不到，所以由 mixin 拦下设置动作时
+     * 顺手存一份分数，这里只把"这一道自己的浓淡"乘进去。</p>
+     *
+     * <p>要不要让这一道自己的颜色参与，由调色板的 {@code laneWind} 决定：纯银星参与，
+     * 金色量把整片星域统一成暖金，风纹就不该再被染成青绿。</p>
+     */
+    public static void updateWind(float time, float opacity, StarRender palette,
+                                  float red, float green, float blue) {
+        StarRender colours = palette == null ? StarRender.FALLBACK_SILVER : palette;
+        float[] lane = colours.laneWind() ? new float[]{red, green, blue} : null;
+        apply(StarSlot.WIND, time, opacity, colours, lane);
+    }
+
+    /** 不跟淡出走的那几种（刀身 / 锁环 / 左臂）：按恒定的不透明度 1 刷一遍。 */
+    private static void applySteady(StarSlot slot, float time, StarRender palette) {
+        apply(slot, time, 1.0F, palette == null ? StarRender.FALLBACK_SILVER : palette, null);
+    }
+
+    /**
+     * 把「槽位基调 × 刀的颜色」一起塞进这一槽的程序。
+     *
+     * @param lane 额外乘进 tint 的颜色（风纹用），null 表示不乘
+     */
+    private static void apply(StarSlot slot, float time, float opacity, StarRender palette, float[] lane) {
+        ShaderInstance shader = get(slot);
+        apply(shader, time, opacity, slot.scale(), palette, lane);
+        if (shader == null) {
+            return;
+        }
+        applyColours(shader, palette);
+        set(shader, "brightness", palette.brightness(slot));
+        float[] tint = palette.tint(slot);
+        if (lane != null) {
+            tint[0] *= lane[0];
+            tint[1] *= lane[1];
+            tint[2] *= lane[2];
+        }
+        set(shader, "tint", tint[0], tint[1], tint[2]);
+    }
+
+    /**
+     * 把时间类参数塞进某一份着色器（颜色类由 {@link #apply} 的另一半负责）。
      *
      * <p>{@code yaw} / {@code pitch} 固定填 0：这两个是原版用来让星空跟着玩家视线转的，
      * 我们用不到（刀光本身已经在转了），留着是为了不改着色器接口。</p>
      *
-     * <p>亮度 {@code brightness} 和色调 {@code tint} 不在这里设——它们写在各份 {@code .json} 的默认值里，
-     * 一份程序一套，设一次就够。</p>
+     * <p>{@code palette} 为 null 时只刷时间参数（次元斩的球、深蓝斩击那两份特例用）。</p>
      */
-    private static void apply(ShaderInstance shader, float time, float opacity, float scale) {
+    private static void apply(ShaderInstance shader, float time, float opacity, float scale,
+                              StarRender palette, float[] lane) {
         if (shader == null) {
             return;
         }
@@ -312,6 +177,18 @@ public final class StarShaders {
         set(shader, "opacity", opacity);
     }
 
+    /** 把一整套星空颜色参数写进某份程序（底色三条曲线 + 星点颜色）。 */
+    private static void applyColours(ShaderInstance shader, StarRender palette) {
+        if (shader == null || palette == null) {
+            return;
+        }
+        set(shader, "bgBase", palette.bgBase());
+        set(shader, "bgAmp", palette.bgAmp());
+        set(shader, "bgPhase", palette.bgPhase());
+        set(shader, "starBase", palette.starBase());
+        set(shader, "starJitter", palette.starJitter());
+    }
+
     /**
      * 给某一份着色器设一个 uniform。
      *
@@ -319,6 +196,9 @@ public final class StarShaders {
      * 所以要先问一句有没有，没有就跳过——{@code safeGetUniform} 找不到时返回 null。</p>
      */
     private static void set(ShaderInstance shader, String name, float value) {
+        if (shader == null) {
+            return;
+        }
         var uniform = shader.safeGetUniform(name);
         if (uniform != null) {
             uniform.set(value);
@@ -327,40 +207,41 @@ public final class StarShaders {
 
     /** 一次性设三个分量（比如 {@code tint} 这种 vec3）。 */
     private static void set(ShaderInstance shader, String name, float x, float y, float z) {
+        if (shader == null) {
+            return;
+        }
         var uniform = shader.safeGetUniform(name);
         if (uniform != null) {
             uniform.set(x, y, z);
         }
     }
 
-    /** 游戏启动时由 Forge 调，把四份着色器登记进去。 */
-    @SubscribeEvent
-    public static void onRegisterShaders(RegisterShadersEvent event) {
-        register(event, ID_DIM, shader -> dim = shader);
-        register(event, ID_COSMIC, shader -> cosmic = shader);
-        register(event, ID_COSMIC_ARC, shader -> cosmicArc = shader);
-        register(event, ID_COSMIC_ARC_BLUE, shader -> cosmicArcBlue = shader);
-        register(event, ID_COSMIC_LOCKON, shader -> cosmicLockon = shader);
-        register(event, ID_COSMIC_PHANTOM, shader -> cosmicPhantom = shader);
-        register(event, ID_COSMIC_PHANTOM_GOLD, shader -> cosmicPhantomGold = shader);
-        register(event, ID_COSMIC_WIND, shader -> cosmicWind = shader);
-        register(event, ID_COSMIC_WAVE, shader -> cosmicWave = shader);
-        register(event, ID_COSMIC_WAVE_GOLD, shader -> cosmicWaveGold = shader);
-        register(event, ID_COSMIC_ARM, shader -> cosmicArm = shader);
-        register(event, ID_COSMIC_ARM_GOLD, shader -> cosmicArmGold = shader);
-        register(event, ID_COSMIC_GOLD, shader -> cosmicGold = shader);
-        register(event, ID_COSMIC_ARC_GOLD, shader -> cosmicArcGold = shader);
-        register(event, ID_COSMIC_WIND_GOLD, shader -> cosmicWindGold = shader);
+    /** 一次性设一个 vec3（数组形式）。 */
+    private static void set(ShaderInstance shader, String name, float[] values) {
+        set(shader, name, values[0], values[1], values[2]);
     }
 
-    private static void register(RegisterShadersEvent event, ResourceLocation id,
-                                 java.util.function.Consumer<ShaderInstance> setter) {
+    /** 游戏启动时由 Forge 调：先按槽位登记全套程序，再补上两份特例。 */
+    @SubscribeEvent
+    public static void onRegisterShaders(RegisterShadersEvent event) {
+        for (StarSlot slot : StarSlot.values()) {
+            register(event, idOf(slot));
+        }
+        register(event, ID_DIM);
+        register(event, ID_ARC_BLUE);
+    }
+
+    private static ResourceLocation idOf(StarSlot slot) {
+        return new ResourceLocation(Silverstar.MODID, slot.program());
+    }
+
+    private static void register(RegisterShadersEvent event, ResourceLocation id) {
         try {
             // 顶点格式跟原版刀光一致：BLOCK（位置 + 颜色 + UV + 光照 + 法线），
             // 这样我们的 RenderType 能直接吃原版模型吐出来的顶点。
             event.registerShader(
                     new ShaderInstance(event.getResourceProvider(), id, DefaultVertexFormat.BLOCK),
-                    setter
+                    shader -> PROGRAMS.put(id, shader)
             );
         } catch (IOException e) {
             throw new RuntimeException("Failed to load shader " + id, e);

@@ -172,7 +172,7 @@ public final class Ember {
                     user.getY() + 1.1D + i * 0.15D,
                     user.getZ() + look.z * push[i]);
             slash.setShooter(user);
-            // 余烬的刀光统一走火焰橙，不跟刀的颜色：这个剑技讲的是“火”，不是刀的属性。
+            // 颜色跟刀走（和原版 doSlash 一样），高 8 位留着当标记，原版渲染会 & 0xFFFFFF 忽略它。
             slash.setColor(color);
             slash.setDamage(0.0D);
             slash.setIsCritical(false);

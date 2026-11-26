@@ -37,6 +37,13 @@ public class Silverstar {
         // 人体动作：把「天堂陨落」登记进拔刀剑的动作表（只在装了 playerAnimator 的客户端生效）。
         bus.addListener(PlayerAnimCompat::onClientSetup);
 
+        // 星空渲染参数：刀自己的 json 里写 render.star_render，资源重载时读进表里。
+        // 注意：AddReloadListenerEvent 是「Forge 事件总线」的事件，不是 mod 总线，
+        // 挂到 bus 上会在启动时抛 IllegalArgumentException（踩过一次，整局起不来）。
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(
+                (net.minecraftforge.event.AddReloadListenerEvent event) ->
+                        event.addListener(com.goldenstar.silverstar.client.StarRender.Loader.INSTANCE));
+
         // 客户端配置：刀身是否也画成星空。注册成 CLIENT 类型，文件落在 config/silverstar-client.toml。
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, SSConfig.SPEC);
     }

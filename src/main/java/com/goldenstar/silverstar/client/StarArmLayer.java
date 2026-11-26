@@ -4,7 +4,6 @@ import com.goldenstar.silverstar.Silverstar;
 import com.goldenstar.silverstar.config.SSConfig;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -15,7 +14,6 @@ import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.joml.Matrix4f;
@@ -53,10 +51,16 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
     private static final float TOP = 1.4F;
     private static final float BOTTOM = 11.0F;
 
-    /** 触发它的刀：0 = 不画，1 = 纯银星，2 = 金色星。 */
-    private static final int NONE = 0;
-    private static final int SILVER = 1;
-    private static final int GOLD = 2;
+    /**
+     * 整块星空沿手臂上移多少（模型像素；模型坐标 y 向下为正，所以负数才是往上）。
+     * 遮罩的 v 坐标仍按 {@link #TOP}/{@link #BOTTOM} 算，这样星空往上走、明暗过渡不动。
+     */
+    private static final float LIFT = -0.5F;
+
+    /** 触发它的刀：NONE = 不画，SILVER / GOLD = 用对应那一族的星空。 */
+    private static final OurBlade NONE = OurBlade.NONE;
+    private static final OurBlade SILVER = OurBlade.SILVER;
+    private static final OurBlade GOLD = OurBlade.GOLD;
 
     /** 超过 30 格就不画：远处一个像素的东西，不值得跑一遍 16 层星空。 */
     private static final double MAX_DIST_SQR = 30.0D * 30.0D;
@@ -69,7 +73,7 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
     public void render(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player,
                        float limbSwing, float limbSwingAmount, float partialTick, float ageInTicks,
                        float netHeadYaw, float headPitch) {
-        int blade = bladeShown(player);
+        OurBlade blade = bladeShown(player);
         if (blade == NONE) {
             return;
         }
@@ -86,19 +90,15 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
         float x1 = (slim ? 2.0F : 3.0F) + PAD;
         float z0 = -2.0F - PAD;
         float z1 = 2.0F + PAD;
-        float y0 = TOP;
-        float y1 = BOTTOM;
+        float y0 = TOP + LIFT;
+        float y1 = BOTTOM + LIFT;
 
         float time = (Minecraft.getInstance().level == null ? 0L
                 : Minecraft.getInstance().level.getGameTime()) * 0.05F;
-        boolean gold = useGold(blade, heldOf(player));
-        if (gold) {
-            StarShaders.updateArmGold(time);
-        } else {
-            StarShaders.updateArm(time);
-        }
+        StarRender palette = paletteOf(blade, heldOf(player));
+        StarShaders.updateArm(time, palette);
 
-        RenderType type = gold ? StarRenderTypes.cosmicArmGold(MASK) : StarRenderTypes.cosmicArm(MASK);
+        RenderType type = StarRenderTypes.type(StarSlot.ARM, MASK);
         VertexConsumer vc = buffers.getBuffer(type);
 
         pose.pushPose();
@@ -132,7 +132,7 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
         float[] ys = {ya, yb, yc, yd};
         float[] zs = {za, zb, zc, zd};
         for (int i = 0; i < 4; i++) {
-            float v = (ys[i] - TOP) / (BOTTOM - TOP);
+            float v = (ys[i] - LIFT - TOP) / (BOTTOM - TOP);
             vc.vertex(mat, xs[i] * U, ys[i] * U, zs[i] * U)
                     .color(255, 255, 255, 255)
                     .uv(0.5F, v)
@@ -156,7 +156,7 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
      * <p>旁观、隐身、离得太远这三种情况三种模式都要排除：隐身的人身上发光会露馅，
      * 远处的星空壳只是一小块噪点，白跑一遍星空着色器。</p>
      */
-    private static int bladeShown(AbstractClientPlayer player) {
+    private static OurBlade bladeShown(AbstractClientPlayer player) {
         if (player.isSpectator() || player.isInvisible()) {
             return NONE;
         }
@@ -170,7 +170,7 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
         int mode = SSConfig.armRenderMode();
         if (mode != SSConfig.ARM_MODE_DEFAULT) {
             // 拿着刀的时候由手上的刀说了算：这是最直接的一票，比背包里放着什么更该信。
-            int held = kindOf(player.getMainHandItem());
+            OurBlade held = heldOf(player);
             if (held != NONE) {
                 return held;
             }
@@ -180,7 +180,7 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
             // 否则用青——这样选项二不至于永远只有一种颜色。
             Inventory hotbar = player.getInventory();
             for (int slot = 0; slot < 9; slot++) {
-                if (kindOf(hotbar.getItem(slot)) == GOLD) {
+                if (OurBlade.of(hotbar.getItem(slot)) == GOLD) {
                     return GOLD;
                 }
             }
@@ -190,63 +190,43 @@ public final class StarArmLayer extends RenderLayer<AbstractClientPlayer, Player
             // 快捷栏 = 背包的第 0~8 格。
             Inventory slots = player.getInventory();
             for (int slot = 0; slot < 9; slot++) {
-                int kind = kindOf(slots.getItem(slot));
+                OurBlade kind = OurBlade.of(slots.getItem(slot));
                 if (kind != NONE) {
                     return kind;
                 }
             }
             return NONE;
         }
-        if (kindOf(player.getMainHandItem()) != NONE) {
+        if (heldOf(player) != NONE) {
             return NONE;                         // 刀在手上，力量在刀上
         }
-        return kindOf(player.getInventory().getItem(0));
+        return OurBlade.of(player.getInventory().getItem(0));
     }
 
     /**
-     * 这一层该用金色还是青色。
+     * 这一层该用哪套调色板。
      *
      * <p>手上的刀排最前：{@code armRenderMode} 不为 0 时，主手拿着金色星就是金色、拿着纯银星就是青色，
      * 这时候配置里的固定色让位——毕竟人手上正握着哪把，是最直接的一票。
      * 没拿刀时就按 {@code armColorMode}：固定青 / 固定金 / 自动（跟着触发它的那把刀走）。</p>
      */
-    private static boolean useGold(int blade, int held) {
+    private static StarRender paletteOf(OurBlade blade, OurBlade held) {
         int mode = SSConfig.armColorMode();
         if (blade != NONE && blade == held) {
             // 这个 blade 就是这个人手上那把，直接用它自己的颜色。
-            return blade == GOLD;
+            return blade.palette();
         }
         if (mode == SSConfig.ARM_COLOR_GOLD) {
-            return true;
+            return OurBlade.GOLD.palette();
         }
         if (mode == SSConfig.ARM_COLOR_SILVER) {
-            return false;
+            return OurBlade.SILVER.palette();
         }
-        return blade == GOLD;
+        return blade.palette();
     }
 
-    /** 这个玩家主手上拿着我们哪把刀（0 = 没有）。 */
-    private static int heldOf(AbstractClientPlayer player) {
-        return kindOf(player.getMainHandItem());
-    }
-
-    /** 这把刀是我们的哪一把：0 = 不是，1 = 纯银星，2 = 金色星。 */
-    private static int kindOf(ItemStack stack) {
-        if (stack.isEmpty()) {
-            return NONE;
-        }
-        String key = stack.getCapability(ItemSlashBlade.BLADESTATE)
-                .map(state -> state.getTranslationKey())
-                .orElse(null);
-        if (key == null) {
-            return NONE;
-        }
-        if (StarOverlay.BLADE_TRANSLATION_KEY.equals(key)) {
-            return SILVER;
-        }
-        if (StarOverlay.GOLDEN_TRANSLATION_KEY.equals(key)) {
-            return GOLD;
-        }
-        return NONE;
+    /** 这个玩家主手上拿着我们哪把刀（NONE = 没有）。 */
+    private static OurBlade heldOf(AbstractClientPlayer player) {
+        return OurBlade.of(player.getMainHandItem());
     }
 }

@@ -55,17 +55,11 @@ public abstract class SummonedSwordRendererMixin {
     private void silverstar$luminousSword(ItemStack stack, WavefrontObject model, String group,
                                           ResourceLocation texture, PoseStack pose,
                                           MultiBufferSource buffers, int light) {
-        if (StarOverlay.active() && !StarOverlay.vanillaLook()) {
+        if (StarOverlay.active()) {
             // 正常情况：画星空层
             StarOverlay.drawSword(stack, model, group, texture, pose, buffers, light);
-        } else if (StarOverlay.vanillaLook()) {
-            // 开了光影：保留原版那一层，只染成紫色。alpha 给满，因为原版自发光这一路
-            // 是按实体寿命自己做淡出的，我们不该再压一档。
-            BladeRenderState.setCol(0xFF000000 | StarOverlay.PURPLE);
-            BladeRenderState.renderOverridedLuminous(stack, model, group, texture, pose, buffers, light);
-            BladeRenderState.resetCol();
         } else {
-            // 不是纯银星的幻影剑：完全交给原版
+            // 不是纯银星的幻影剑（或开着光影）：完全交给原版，颜色也归原版
             BladeRenderState.renderOverridedLuminous(stack, model, group, texture, pose, buffers, light);
         }
     }

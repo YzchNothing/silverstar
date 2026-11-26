@@ -12,7 +12,6 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * 星空层的 {@link RenderType}（渲染类型）。
@@ -23,8 +22,10 @@ import java.util.function.Supplier;
  * <p>这里所有碎片都是自己 new 的，没用原版现成的常量——那些常量原来是 {@code protected static final}，
  * 外部拿不到，要拿就得加 Access Transformer 改访问权限，不如自己造一份干净。</p>
  *
- * <p>每一层（亮刀光 / 暗球 / 风纹 / 幻影剑）都自带一份着色程序，程序 json 里写死了自己的亮度和色调，
- * 所以暗球和亮刀光可以同时在一批里，不会互相抢参数。</p>
+ * <p><b>只有一条入口：</b>{@link #type(StarSlot, ResourceLocation)}。
+ * 用哪份程序、怎么混合、图元类型，全部由槽位决定（见 {@link StarSlot}），
+ * 缓存键也由槽位自动拼出来，不再靠手写字符串——以前漏打一个 {@code "cpg@"} 就会让两把刀共用同一个
+ * RenderType，于是金色幻影剑被画成银的。</p>
  */
 public final class StarRenderTypes {
     /** 只有星星、A 通道全满，给次元斩球用（形状由模型几何决定）。 */
@@ -34,209 +35,54 @@ public final class StarRenderTypes {
     /** 每种（程序, 贴图）组合只造一个 RenderType，造过就缓存。 */
     private static final Map<String, RenderType> CACHE = new HashMap<>();
 
-    /** 次元斩球：几乎是个洞，亮度压到很低。 */
+    /** 次元斩球：几乎是个洞，亮度压到很低。不属于任何一族，只有一份。 */
     public static RenderType dim(ResourceLocation sheet) {
-        return get("d", sheet, StarShaders::dim);
+        return CACHE.computeIfAbsent("dim@" + sheet,
+                key -> create("stars_dim", StarSlot.Kind.ADDITIVE, sheet, StarShaders::dim));
+    }
+
+    /** 完美次元斩额外斩出的那几刀：深蓝，不属于任何一族，两把刀都会用到。 */
+    public static RenderType arcBlue(ResourceLocation sheet) {
+        return CACHE.computeIfAbsent("arc_blue@" + sheet,
+                key -> create("cosmic_arc_blue", StarSlot.Kind.ADDITIVE, sheet, StarShaders::arcBlue));
     }
 
     /**
-     * 刀身：无尽贪婪那种“整块星域”的观感。
+     * 某个槽位用的渲染类型。
      *
-     * <p>它跟上面四层不是一回事——那四层是光效，靠加法混合叠在夜色上；刀身本体是实心的，
-     * 必须用普通半透明混合（src*alpha + dst*(1-alpha)），否则星域暗的地方会变成透明的，
-     * 看上去像刀是镂空的。</p>
+     * <p>{@code sheet} 一般是原版自己的贴图：它的 alpha 就是形状（那道弧、那把剑、那片波），
+     * 星点则由 cosmic 按空间方向算，于是形状无论怎么动，星域都是“印在同一片天上”的。</p>
      */
-    public static RenderType cosmic(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("c@" + sheet, key -> createCosmic(sheet));
-    }
-
-    /** 「金色星」刀身：和 {@link #cosmic} 同一套状态，只是换一份金色调的着色器程序。 */
-    public static RenderType cosmicGold(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cg@" + sheet, key -> createCosmicGold(sheet));
+    public static RenderType type(StarSlot slot, ResourceLocation sheet) {
+        String program = slot.program();
+        return CACHE.computeIfAbsent(program + "@" + sheet, key -> create(program, slot.kind(),
+                sheet, () -> StarShaders.get(slot)));
     }
 
     /**
-     * 刀光那一层用的 cosmic。
+     * 按槽位的混合方式造一个 RenderType。
      *
-     * <p>和刀身那份的区别有两个：亮度在程序 json 里压到约 1/4（一道刀光要叠四层），
-     * 混合换成加法（刀光是光，不是实体）。</p>
-     *
-     * <p>这里传进来的 {@code sheet} 是原版刀光自己的贴图，它的 alpha 就是那道弧的形状；
-     * 星点则按空间方向算，四层各自 UV 怎么挪都落在同一片星空上，所以不会出现四份重影。</p>
+     * <p>缓冲区和图元类型是踩过坑的地方，注释留在下面各处。</p>
      */
-    public static RenderType cosmicArc(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("ca@" + sheet, key -> createCosmicArc("cosmic_arc",
-                StarShaders::cosmicArc, sheet));
-    }
-
-    /**
-     * 锁定目标的圆环：单独一份着色器程序。
-     *
-     * <p>和刀光分开是必须的——共用程序时，刀光淡出到 0 的那一帧圆环会跟着熄一下。</p>
-     */
-    public static RenderType cosmicLockon(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cl@" + sheet, key -> createCosmicArc("cosmic_lockon",
-                StarShaders::cosmicLockon, sheet));
-    }
-
-    /** 「金色星」的刀光：金色 fragment，其余与 {@link #cosmicArc} 完全一致。 */
-    public static RenderType cosmicArcGold(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cag@" + sheet, key -> createCosmicArc("cosmic_arc_gold",
-                StarShaders::cosmicGold, sheet));
-    }
-
-    /** 完美次元斩额外斩出的那几刀：和 wind 同一个深蓝，其余与刀光一致。 */
-    public static RenderType cosmicArcBlue(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cab@" + sheet, key -> createCosmicArc("cosmic_arc_blue",
-                StarShaders::cosmicArcBlue, sheet));
-    }
-
-    /** 幻影剑：星点稀疏版 cosmic，深紫。 */
-    public static RenderType cosmicPhantom(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cp@" + sheet, key -> createCosmicArc("cosmic_phantom",
-                StarShaders::cosmicPhantom, sheet));
-    }
-
-    /** 「金色星」的幻影剑：同样稀疏，片元换成金色那份。缓存键单独一份，别和纯银星混。 */
-    public static RenderType cosmicPhantomGold(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cpg@" + sheet, key -> createCosmicArc("cosmic_phantom_gold",
-                StarShaders::cosmicPhantomGold, sheet));
-    }
-
-    /** 次元斩外圈的风纹：跟刀光同一套 cosmic，色调由 {@code StarShaders.updateWind} 每次单独塞。 */
-    public static RenderType cosmicWind(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cw@" + sheet, key -> createCosmicArc("cosmic_wind",
-                StarShaders::cosmicWind, sheet));
-    }
-
-    /** 金色星的风纹：参数一样，片元是金色那份。单独缓存，别和纯银星那份混。 */
-    public static RenderType cosmicWindGold(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cwg@" + sheet, key -> createCosmicArc("cosmic_wind_gold",
-                StarShaders::cosmicWindGold, sheet));
-    }
-
-    /** 斩击波（波刀龙胆这类 drive 招式）：跟刀光同一套 cosmic，只有一层。 */
-    public static RenderType cosmicWave(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cwv@" + sheet, key -> createCosmicArc("cosmic_wave",
-                StarShaders::cosmicWave, sheet));
-    }
-
-    /** 「金色星」的斩击波：参数一样，片元是金色那份。缓存键单独一份。 */
-    public static RenderType cosmicWaveGold(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("cwvg@" + sheet, key -> createCosmicArc("cosmic_wave_gold",
-                StarShaders::cosmicWaveGold, sheet));
-    }
-
-    /**
-     * 左臂星空：半透明叠加在小臂外面的一层壳。
-     *
-     * <p>和刀身那份（{@link #cosmic}）的区别：那边是三角形（模型来自 .obj），这边是我们自己拼的四边形；
-     * 透明度完全交给遮罩贴图的 alpha 决定，程序里 {@code opacity} 恒为 1。</p>
-     */
-    public static RenderType cosmicArm(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("car@" + sheet, key -> createCosmicArm(sheet));
-    }
-
-    /** 左臂星空壳的金色版：同一套几何，只换着色器程序。 */
-    public static RenderType cosmicArmGold(ResourceLocation sheet) {
-        return CACHE.computeIfAbsent("carg@" + sheet, key -> createCosmicArm("silverstar_stars_arm_gold", sheet, StarShaders::cosmicArmGold));
-    }
-
-    private static RenderType createCosmicArm(ResourceLocation sheet) {
-        return createCosmicArm("silverstar_stars_arm", sheet, StarShaders::cosmicArm);
-    }
-
-    private static RenderType createCosmicArm(String name, ResourceLocation sheet,
-                                              java.util.function.Supplier<net.minecraft.client.renderer.ShaderInstance> shader) {
+    private static RenderType create(String name, StarSlot.Kind kind, ResourceLocation sheet,
+                                     java.util.function.Supplier<ShaderInstance> shader) {
+        boolean arm = kind == StarSlot.Kind.ARM;
+        boolean solid = kind == StarSlot.Kind.SOLID;
         return RenderType.create(
-                name,
+                "silverstar_stars_" + name,
                 DefaultVertexFormat.BLOCK,
-                VertexFormat.Mode.QUADS,
-                2048,
+                // 刀身和光效都是 .obj 模型 → 三角形；左臂是我们自己拼的四边形 → QUADS。
+                arm ? VertexFormat.Mode.QUADS : VertexFormat.Mode.TRIANGLES,
+                // 左臂只有一个小壳，缓冲区小一点；光效一层能铺满半个屏幕，给大的。
+                arm ? 2048 : 2097152,
                 false,
                 false,
                 RenderType.CompositeState.builder()
                         .setShaderState(new RenderStateShard.ShaderStateShard(shader))
                         .setTextureState(new RenderStateShard.TextureStateShard(sheet, false, false))
-                        .setTransparencyState(TRANSLUCENT)
-                        .setDepthTestState(LEQUAL_DEPTH)
-                        .setLightmapState(LIGHTMAP)
-                        .setCullState(NO_CULL)
-                        .setWriteMaskState(COLOR_WRITE)
-                        .createCompositeState(false));
-    }
-
-    private static RenderType createCosmicArc(String tag, Supplier<ShaderInstance> shader, ResourceLocation sheet) {
-        return RenderType.create(
-                "silverstar_stars_" + tag,
-                DefaultVertexFormat.BLOCK,
-                VertexFormat.Mode.TRIANGLES,
-                2097152,
-                false,
-                false,
-                RenderType.CompositeState.builder()
-                        .setShaderState(new RenderStateShard.ShaderStateShard(shader))
-                        .setTextureState(new RenderStateShard.TextureStateShard(sheet, false, false))
-                        .setTransparencyState(ADDITIVE)
-                        .setDepthTestState(LEQUAL_DEPTH)
-                        .setLightmapState(LIGHTMAP)
-                        .setCullState(NO_CULL)
-                        .setWriteMaskState(COLOR_WRITE)
-                        .createCompositeState(false));
-    }
-
-    private static RenderType createCosmic(ResourceLocation sheet) {
-        return createCosmic("silverstar_stars_cosmic", sheet, StarShaders::cosmic);
-    }
-
-    private static RenderType createCosmicGold(ResourceLocation sheet) {
-        return createCosmic("silverstar_stars_cosmic_gold", sheet, StarShaders::cosmicGold);
-    }
-
-    private static RenderType createCosmic(String name, ResourceLocation sheet,
-                                           Supplier<ShaderInstance> shader) {
-        return RenderType.create(
-                name,
-                DefaultVertexFormat.BLOCK,
-                // 必须是三角形：模型来自 .obj，每个面就是三个顶点。
-                // 写成 QUADS 的话，每 4 个顶点才凑一个图元，模型交上来的三角形会被强行拼接，
-                // 于是画面里两个模型之间会拖出一条线（顶点数据全错位了）。
-                // 拔刀剑自己的 slashblade_blend 用的也是 TRIANGLES。
-                VertexFormat.Mode.TRIANGLES,
-                2097152,
-                false,
-                false,
-                RenderType.CompositeState.builder()
-                        .setShaderState(new RenderStateShard.ShaderStateShard(shader))
-                        .setTextureState(new RenderStateShard.TextureStateShard(sheet, false, false))
-                        .setTransparencyState(TRANSLUCENT)
-                        .setDepthTestState(LEQUAL_DEPTH)
-                        .setLightmapState(LIGHTMAP)
-                        .setCullState(NO_CULL)
-                        .setWriteMaskState(COLOR_WRITE)
-                        .createCompositeState(false));
-    }
-
-    private static RenderType get(String tag, ResourceLocation sheet, Supplier<ShaderInstance> shader) {
-        return CACHE.computeIfAbsent(tag + "@" + sheet, key -> create(tag, sheet, shader));
-    }
-
-    private static RenderType create(String tag, ResourceLocation sheet, Supplier<ShaderInstance> shader) {
-        RenderStateShard.ShaderStateShard shaderState = new RenderStateShard.ShaderStateShard(shader);
-        RenderStateShard.TextureStateShard texture =
-                new RenderStateShard.TextureStateShard(sheet, false, false);
-        return RenderType.create(
-                "silverstar_stars_" + tag,
-                DefaultVertexFormat.BLOCK,
-                VertexFormat.Mode.QUADS,
-                // 缓冲区大小：2097152 字节，够一层刀光用，写大了只是白占内存
-                2097152,
-                false,
-                false,
-                RenderType.CompositeState.builder()
-                        .setShaderState(shaderState)
-                        .setTextureState(texture)
-                        .setTransparencyState(ADDITIVE)
+                        // 刀身是实体，必须普通半透明混合，否则星域暗的地方会透过去，像刀是镂空的；
+                        // 光效是光，加法叠在夜色上。
+                        .setTransparencyState(solid || arm ? TRANSLUCENT : ADDITIVE)
                         .setDepthTestState(LEQUAL_DEPTH)
                         .setLightmapState(LIGHTMAP)
                         .setCullState(NO_CULL)
@@ -269,7 +115,7 @@ public final class StarRenderTypes {
     private static final RenderStateShard.DepthTestStateShard LEQUAL_DEPTH =
             new RenderStateShard.DepthTestStateShard("silverstar_stars_lequal", 515);
 
-    /** 普通半透明：给刀身用，暗的地方会盖住底下的东西，刀看起来才是实心的。 */
+    /** 普通半透明：给刀身和左臂用，暗的地方会盖住底下的东西。 */
     private static final RenderStateShard.TransparencyStateShard TRANSLUCENT =
             new RenderStateShard.TransparencyStateShard("silverstar_stars_translucent",
                     () -> {
