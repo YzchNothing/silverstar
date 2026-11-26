@@ -5,8 +5,11 @@ import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
 import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.specialeffects.SpecialEffect;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -24,17 +27,17 @@ import net.minecraftforge.fml.common.Mod;
  *   <li>每挥 3 刀，第 4 刀本体和第二段一起翻倍。</li>
  * </ol>
  *
- * <p>需求等级 50。击杀数用刀自带的计数器（{@link ISlashBladeState#getKillCount()}），所以换手、重进都跟着刀走。</p>
+ * <p>需求等级 30。击杀数用刀自带的计数器（{@link ISlashBladeState#getKillCount()}），所以换手、重进都跟着刀走。</p>
  */
 @Mod.EventBusSubscriber(modid = Silverstar.MODID)
 public class OneLeft extends SpecialEffect {
     public static final ResourceLocation ID = new ResourceLocation(Silverstar.MODID, "one_left");
 
     /** 生效需求：玩家经验等级达到这个值。 */
-    public static final int REQUIRED_LEVEL = 50;
+    public static final int REQUIRED_LEVEL = 30;
     /**
      * 传给 SpecialEffect 的需求等级要减 1。SlashBlade 判断「是否满足」用的是
-     * requestLevel &lt; 玩家等级（严格小于），传 50 的话要 51 级才变红字。传 49 才能让 50 级既生效又是红字。
+     * requestLevel &lt; 玩家等级（严格小于），传 30 的话要 31 级才变红字。传 29 才能让 30 级既生效又是红字。
      */
     private static final int TOOLTIP_REQUEST_LEVEL = REQUIRED_LEVEL - 1;
 
@@ -129,8 +132,17 @@ public class OneLeft extends SpecialEffect {
         // indirectMagic 的伤害类型是魔法（不吃护甲），但攻击者记在玩家身上，所以补刀也算玩家的击杀。
         dealDamage(target, player.damageSources().indirectMagic(player, player), (float) (half * MAGIC_CRIT));
         if (target.isAlive()) {
-            dealDamage(target, player.damageSources().dragonBreath(), (float) half);
+            // 龙息伤害类型 + 攻击者记在玩家身上：类型仍是龙息（不吃护甲），但击杀归属玩家。
+            dealDamage(target, playerDragonBreath(player), (float) half);
         }
+    }
+
+    /** 玩家的龙息伤害来源。 */
+    private static DamageSource playerDragonBreath(Player player) {
+        return new DamageSource(
+                player.level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE)
+                        .getHolderOrThrow(DamageTypes.DRAGON_BREATH),
+                player, player);
     }
 
     private static boolean eligible(Player player, ISlashBladeState state) {
