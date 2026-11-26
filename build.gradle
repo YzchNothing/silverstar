@@ -7,7 +7,7 @@ plugins {
 }
 
 // 版本号只在这里改一处；mods.toml 里的 ${mod_version} 也跟着变。
-version = "1.1.1"
+version = "1.1.2"
 group = "com.goldenstar.silverstar"
 archivesBaseName = "silverstar"
 
